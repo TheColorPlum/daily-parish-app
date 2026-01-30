@@ -6,10 +6,12 @@ import {
   WelcomeScreen,
   TodayScreen,
   HistoryScreen,
+  HistoryDetailScreen,
   SettingsScreen,
 } from '../screens';
 import { useUserLoader } from '../hooks';
 import { colors } from '../theme';
+import type { HistoryItem } from '../types';
 
 // Type definitions for navigation
 export type AuthStackParamList = {
@@ -19,6 +21,7 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   Today: undefined;
   History: undefined;
+  HistoryDetail: { item: HistoryItem };
   Settings: undefined;
 };
 
@@ -52,6 +55,7 @@ function MainNavigator() {
     >
       <MainStack.Screen name="Today" component={TodayScreen} />
       <MainStack.Screen name="History" component={HistoryScreen} />
+      <MainStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
       <MainStack.Screen name="Settings" component={SettingsScreen} />
     </MainStack.Navigator>
   );

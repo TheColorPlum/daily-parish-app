@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { 
@@ -15,9 +16,12 @@ import {
 import { api } from '../lib';
 import { colors, spacing } from '../theme';
 import type { HistoryItem } from '../types';
+import type { MainStackParamList } from '../navigation';
+
+type HistoryScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'History'>;
 
 export function HistoryScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HistoryScreenNavigationProp>();
   const { getToken } = useAuth();
   const [sessions, setSessions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,19 +64,37 @@ export function HistoryScreen() {
     });
   };
 
+  const handleItemPress = (item: HistoryItem) => {
+    navigation.navigate('HistoryDetail', { item });
+  };
+
   const renderItem = ({ item }: { item: HistoryItem }) => (
-    <Card style={styles.historyItem}>
-      <View style={styles.itemHeader}>
-        <BodyStrong>{formatDate(item.date)}</BodyStrong>
-        <Ionicons name="checkmark-circle" size={18} color={colors.brand.primary} />
-      </View>
-      <Caption color="secondary" style={styles.reference}>
-        {item.first_reading.reference}
-      </Caption>
-      <Caption color="secondary">
-        {item.gospel.reference}
-      </Caption>
-    </Card>
+    <TouchableOpacity onPress={() => handleItemPress(item)} activeOpacity={0.7}>
+      <Card style={styles.historyItem}>
+        <View style={styles.itemHeader}>
+          <BodyStrong>{formatDate(item.date)}</BodyStrong>
+          <View style={styles.itemRight}>
+            <Ionicons 
+              name="checkmark-circle" 
+              size={18} 
+              color={colors.brand.primary} 
+              style={styles.checkIcon}
+            />
+            <Ionicons 
+              name="chevron-forward" 
+              size={18} 
+              color={colors.text.muted} 
+            />
+          </View>
+        </View>
+        <Caption color="secondary" style={styles.reference}>
+          {item.first_reading.reference}
+        </Caption>
+        <Caption color="secondary">
+          {item.gospel.reference}
+        </Caption>
+      </Card>
+    </TouchableOpacity>
   );
 
   const renderEmpty = () => (
@@ -158,6 +180,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  itemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkIcon: {
+    marginRight: spacing.xs,
   },
   reference: {
     marginTop: spacing.xs,

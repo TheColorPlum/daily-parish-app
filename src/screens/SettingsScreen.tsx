@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { 
   ScreenShell, 
   Button,
@@ -12,7 +13,13 @@ import {
   Caption,
 } from '../components';
 import { useSettingsStore, useUserStore, useTodayStore } from '../stores';
-import { api } from '../lib';
+import { 
+  api, 
+  requestNotificationPermissions, 
+  scheduleDailyReminder, 
+  cancelDailyReminder,
+  checkNotificationPermissions,
+} from '../lib';
 import { colors, spacing, radius } from '../theme';
 
 // App version - update with each release
@@ -22,21 +29,78 @@ export function SettingsScreen() {
   const navigation = useNavigation();
   const { signOut, getToken } = useAuth();
   const { user } = useUser();
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  
   const { 
     dailyReminderEnabled, 
     reminderHour, 
     reminderMinute,
-    setDailyReminderEnabled 
+    notificationPermissionGranted,
+    setDailyReminderEnabled,
+    setReminderTime,
+    setNotificationPermissionGranted,
   } = useSettingsStore();
+  
+  const { currentStreak } = useUserStore();
   const clearUser = useUserStore((state) => state.clearUser);
   const clearToday = useTodayStore((state) => state.clearToday);
 
-  const handleToggleReminder = (value: boolean) => {
-    // TODO: Handle notification permissions and scheduling
-    setDailyReminderEnabled(value);
-  };
+  // Check notification permissions on mount
+  useEffect(() => {
+    checkPermissions();
+  }, []);
 
-  const handleSignOut = () => {
+  async function checkPermissions() {
+    const granted = await checkNotificationPermissions();
+    setNotificationPermissionGranted(granted);
+  }
+
+  async function handleToggleReminder(value: boolean) {
+    if (value) {
+      // Enabling - request permissions first
+      const granted = await requestNotificationPermissions();
+      setNotificationPermissionGranted(granted);
+      
+      if (!granted) {
+        Alert.alert(
+          'Notifications disabled',
+          'Please enable notifications in your device settings to receive daily reminders.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Schedule the notification
+      await scheduleDailyReminder(reminderHour, reminderMinute);
+      setDailyReminderEnabled(true);
+    } else {
+      // Disabling - cancel notifications
+      await cancelDailyReminder();
+      setDailyReminderEnabled(false);
+    }
+  }
+
+  function handleTimePress() {
+    setShowTimePicker(true);
+  }
+
+  async function handleTimeChange(event: DateTimePickerEvent, selectedDate?: Date) {
+    setShowTimePicker(Platform.OS === 'ios');
+    
+    if (event.type === 'set' && selectedDate) {
+      const hour = selectedDate.getHours();
+      const minute = selectedDate.getMinutes();
+      
+      setReminderTime(hour, minute);
+      
+      // Reschedule notification with new time
+      if (dailyReminderEnabled) {
+        await scheduleDailyReminder(hour, minute);
+      }
+    }
+  }
+
+  function handleSignOut() {
     Alert.alert(
       'Sign out?',
       'You\'ll need to sign in again next time.',
@@ -46,17 +110,17 @@ export function SettingsScreen() {
           text: 'Sign Out', 
           style: 'destructive',
           onPress: async () => {
+            await cancelDailyReminder();
             await signOut();
             clearUser();
             clearToday();
-            // Navigation handled by auth state change
           },
         },
       ]
     );
-  };
+  }
 
-  const handleDeleteAccount = () => {
+  function handleDeleteAccount() {
     Alert.alert(
       'Delete account?',
       'This will permanently delete your account, prayer history, and reflections. This can\'t be undone.',
@@ -71,6 +135,7 @@ export function SettingsScreen() {
               if (token) {
                 await api.deleteUser(token);
               }
+              await cancelDailyReminder();
               await signOut();
               clearUser();
               clearToday();
@@ -81,7 +146,7 @@ export function SettingsScreen() {
         },
       ]
     );
-  };
+  }
 
   const formatTime = (hour: number, minute: number) => {
     const period = hour >= 12 ? 'PM' : 'AM';
@@ -89,6 +154,11 @@ export function SettingsScreen() {
     const displayMinute = minute.toString().padStart(2, '0');
     return `${displayHour}:${displayMinute} ${period}`;
   };
+
+  // Create a Date object for the time picker
+  const timePickerDate = new Date();
+  timePickerDate.setHours(reminderHour);
+  timePickerDate.setMinutes(reminderMinute);
 
   return (
     <ScreenShell>
@@ -109,8 +179,18 @@ export function SettingsScreen() {
       <View style={styles.section}>
         <View style={styles.row}>
           <BodyStrong>Email</BodyStrong>
-          <Body color="secondary">{user?.emailAddresses[0]?.emailAddress}</Body>
+          <Body color="secondary" numberOfLines={1} style={styles.emailText}>
+            {user?.emailAddresses[0]?.emailAddress || '—'}
+          </Body>
         </View>
+        {currentStreak > 0 && (
+          <View style={[styles.row, styles.rowBorder]}>
+            <BodyStrong>Current streak</BodyStrong>
+            <Body color="secondary">
+              {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
+            </Body>
+          </View>
+        )}
       </View>
 
       {/* Notifications Section */}
@@ -130,12 +210,34 @@ export function SettingsScreen() {
         </View>
         
         {dailyReminderEnabled && (
-          <TouchableOpacity style={[styles.row, styles.rowBorder]}>
+          <TouchableOpacity 
+            style={[styles.row, styles.rowBorder]}
+            onPress={handleTimePress}
+          >
             <BodyStrong>Reminder time</BodyStrong>
-            <Body color="secondary">{formatTime(reminderHour, reminderMinute)}</Body>
+            <View style={styles.timeRow}>
+              <Body color="secondary">{formatTime(reminderHour, reminderMinute)}</Body>
+              <Ionicons 
+                name="chevron-forward" 
+                size={16} 
+                color={colors.text.muted} 
+                style={styles.chevron}
+              />
+            </View>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Time Picker */}
+      {showTimePicker && (
+        <DateTimePicker
+          value={timePickerDate}
+          mode="time"
+          is24Hour={false}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+        />
+      )}
 
       {/* Actions Section */}
       <View style={styles.actions}>
@@ -190,6 +292,18 @@ const styles = StyleSheet.create({
   rowBorder: {
     borderTopWidth: 1,
     borderTopColor: colors.border.subtle,
+  },
+  emailText: {
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: spacing.lg,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chevron: {
+    marginLeft: spacing.xs,
   },
   actions: {
     marginTop: spacing.xl,
