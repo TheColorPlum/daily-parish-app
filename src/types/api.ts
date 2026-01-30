@@ -1,6 +1,6 @@
 /**
  * API Types for Daily Parish
- * Based on Frontend-App/05-api-contract.md
+ * Based on MOBILE-SPRINT-PLAN.md API Reference
  */
 
 export interface Reading {
@@ -12,13 +12,14 @@ export interface TodayResponse {
   date: string;
   first_reading: Reading;
   gospel: Reading;
-  commentary: string;
-  audio_url: string;
+  commentary_unified: string;
+  audio_unified_url: string;
 }
 
 export interface SessionStartResponse {
   session_id: string;
-  already_completed: boolean;
+  date: string;
+  daily_readings_id: string;
 }
 
 export interface SessionCompleteResponse {
@@ -26,29 +27,26 @@ export interface SessionCompleteResponse {
   streak: {
     current_streak: number;
     longest_streak: number;
-    total_sessions: number;
   };
 }
 
 export interface HistoryItem {
-  session_id: string;
   date: string;
-  first_reading_reference: string;
-  gospel_reference: string;
-  completed_at: string;
+  streak_count: number;
+  first_reading: Reading;
+  gospel: Reading;
+  commentary_unified: string;
 }
 
-export interface HistoryResponse {
-  sessions: HistoryItem[];
-}
+export type HistoryResponse = HistoryItem[];
 
 export interface UserResponse {
   id: string;
   email: string;
-  created_at: string;
-  streak: {
-    current_streak: number;
-    longest_streak: number;
-    total_sessions: number;
-  };
+  subscription_status: 'free' | 'premium';
+}
+
+export interface ApiErrorResponse {
+  error: string;
+  message?: string;
 }

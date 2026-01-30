@@ -1,15 +1,33 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { TodayResponse } from '../types';
 
-type TodayScreenState = 'loading' | 'ready' | 'playing' | 'content_consumed' | 'completed' | 'error';
+type TodayScreenState = 
+  | 'loading'
+  | 'ready'
+  | 'playing'
+  | 'content_consumed'
+  | 'completed'
+  | 'error';
+
+interface Reading {
+  reference: string;
+  text: string;
+}
+
+interface ReadingsData {
+  date: string;
+  first_reading: Reading;
+  gospel: Reading;
+  commentary: string;
+  audioUrl: string;
+}
 
 interface TodayState {
   // Data
   date: string | null;
-  firstReading: { reference: string; text: string } | null;
-  gospel: { reference: string; text: string } | null;
+  firstReading: Reading | null;
+  gospel: Reading | null;
   commentary: string | null;
   audioUrl: string | null;
   
@@ -17,49 +35,39 @@ interface TodayState {
   sessionId: string | null;
   screenState: TodayScreenState;
   
-  // Audio state
-  isPlaying: boolean;
-  playbackPosition: number;
-  playbackDuration: number;
-  
   // Error
   errorMessage: string | null;
   
   // Actions
-  setReadings: (data: TodayResponse) => void;
+  setReadings: (data: ReadingsData) => void;
   setSessionId: (id: string) => void;
   setScreenState: (state: TodayScreenState) => void;
-  setIsPlaying: (playing: boolean) => void;
-  setPlaybackPosition: (position: number) => void;
-  setPlaybackDuration: (duration: number) => void;
   setError: (message: string) => void;
   clearToday: () => void;
 }
 
+const initialState = {
+  date: null,
+  firstReading: null,
+  gospel: null,
+  commentary: null,
+  audioUrl: null,
+  sessionId: null,
+  screenState: 'loading' as TodayScreenState,
+  errorMessage: null,
+};
+
 export const useTodayStore = create<TodayState>()(
   persist(
     (set) => ({
-      // Initial state
-      date: null,
-      firstReading: null,
-      gospel: null,
-      commentary: null,
-      audioUrl: null,
-      sessionId: null,
-      screenState: 'loading',
-      isPlaying: false,
-      playbackPosition: 0,
-      playbackDuration: 0,
-      errorMessage: null,
+      ...initialState,
 
-      // Actions
       setReadings: (data) => set({
         date: data.date,
         firstReading: data.first_reading,
         gospel: data.gospel,
         commentary: data.commentary,
-        audioUrl: data.audio_url,
-        screenState: 'ready',
+        audioUrl: data.audioUrl,
         errorMessage: null,
       }),
       
@@ -67,41 +75,20 @@ export const useTodayStore = create<TodayState>()(
       
       setScreenState: (state) => set({ screenState: state }),
       
-      setIsPlaying: (playing) => set({ isPlaying: playing }),
-      
-      setPlaybackPosition: (position) => set({ playbackPosition: position }),
-      
-      setPlaybackDuration: (duration) => set({ playbackDuration: duration }),
-      
       setError: (message) => set({ 
         screenState: 'error', 
         errorMessage: message 
       }),
       
-      clearToday: () => set({
-        date: null,
-        firstReading: null,
-        gospel: null,
-        commentary: null,
-        audioUrl: null,
-        sessionId: null,
-        screenState: 'loading',
-        isPlaying: false,
-        playbackPosition: 0,
-        playbackDuration: 0,
-        errorMessage: null,
-      }),
+      clearToday: () => set(initialState),
     }),
     {
       name: 'today-storage',
       storage: createJSONStorage(() => AsyncStorage),
-      // Only persist date and readings, not ephemeral state
+      // Only persist date and completion state for re-entry
       partialize: (state) => ({
         date: state.date,
-        firstReading: state.firstReading,
-        gospel: state.gospel,
-        commentary: state.commentary,
-        audioUrl: state.audioUrl,
+        screenState: state.screenState === 'completed' ? 'completed' : 'loading',
       }),
     }
   )

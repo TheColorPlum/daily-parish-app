@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
@@ -10,6 +10,7 @@ import {
   Body,
   BodyStrong,
   Caption,
+  Button,
 } from '../components';
 import { api } from '../lib';
 import { colors, spacing } from '../theme';
@@ -20,29 +21,38 @@ export function HistoryScreen() {
   const { getToken } = useAuth();
   const [sessions, setSessions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadHistory();
   }, []);
 
-  const loadHistory = async () => {
+  const loadHistory = async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+      
       const token = await getToken();
       if (!token) return;
       
       const data = await api.getHistory(token);
-      setSessions(data.sessions);
+      setSessions(data);
     } catch (err) {
       setError('Failed to load history');
+      console.error('History error:', err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    const d = new Date(dateString);
+    const d = new Date(dateString + 'T12:00:00');
     return d.toLocaleDateString('en-US', { 
       weekday: 'long', 
       month: 'long', 
@@ -52,12 +62,15 @@ export function HistoryScreen() {
 
   const renderItem = ({ item }: { item: HistoryItem }) => (
     <Card style={styles.historyItem}>
-      <BodyStrong>{formatDate(item.date)}</BodyStrong>
+      <View style={styles.itemHeader}>
+        <BodyStrong>{formatDate(item.date)}</BodyStrong>
+        <Ionicons name="checkmark-circle" size={18} color={colors.brand.primary} />
+      </View>
       <Caption color="secondary" style={styles.reference}>
-        {item.first_reading_reference}
+        {item.first_reading.reference}
       </Caption>
       <Caption color="secondary">
-        {item.gospel_reference}
+        {item.gospel.reference}
       </Caption>
     </Card>
   );
@@ -84,28 +97,42 @@ export function HistoryScreen() {
         <DisplayMd>History</DisplayMd>
       </View>
 
+      {/* Error state */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Body color="secondary">{error}</Body>
+          <Button
+            title="Try again"
+            variant="ghost"
+            onPress={() => loadHistory()}
+          />
+        </View>
+      )}
+
       {/* History List */}
-      <FlatList
-        data={sessions}
-        keyExtractor={(item) => item.session_id}
-        renderItem={renderItem}
-        ListEmptyComponent={!loading ? renderEmpty : null}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+      {!error && (
+        <FlatList
+          data={sessions}
+          keyExtractor={(item) => item.date}
+          renderItem={renderItem}
+          ListEmptyComponent={!loading ? renderEmpty : null}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadHistory(true)}
+              tintColor={colors.brand.primary}
+            />
+          }
+        />
+      )}
 
       {/* Loading state */}
-      {loading && (
+      {loading && sessions.length === 0 && (
         <Body color="secondary" style={styles.loading}>
           Loading history...
         </Body>
-      )}
-
-      {/* Error state */}
-      {error && (
-        <View style={styles.error}>
-          <Body color="secondary">{error}</Body>
-        </View>
       )}
     </ScreenShell>
   );
@@ -122,9 +149,15 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: spacing['2xl'],
+    flexGrow: 1,
   },
   historyItem: {
     marginBottom: spacing.sm,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   reference: {
     marginTop: spacing.xs,
@@ -142,8 +175,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing['3xl'],
   },
-  error: {
-    textAlign: 'center',
+  errorContainer: {
+    alignItems: 'center',
     marginTop: spacing['3xl'],
   },
 });

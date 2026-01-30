@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useCallback, useState } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
+import * as Haptics from 'expo-haptics';
 import { 
   ScreenShell, 
   Card, 
+  Button,
   DisplayMd, 
   Body, 
   Caption,
@@ -13,48 +15,210 @@ import {
   ScriptureBody,
 } from '../components';
 import { useTodayStore, useUserStore } from '../stores';
-import { api } from '../lib';
+import { useAudioPlayer, useAppStateRefresh } from '../hooks';
+import { api, ApiError } from '../lib';
 import { colors, spacing } from '../theme';
 
 export function TodayScreen() {
   const navigation = useNavigation();
   const { getToken } = useAuth();
+  const [isCompletingSession, setIsCompletingSession] = useState(false);
+  
+  // Stores
   const { 
     date, 
     firstReading, 
     gospel, 
     commentary,
+    audioUrl,
+    sessionId,
     screenState,
     setReadings,
+    setSessionId,
+    setScreenState,
     setError,
   } = useTodayStore();
-  const { hasCompletedFirstSession } = useUserStore();
+  
+  const { 
+    hasCompletedFirstSession, 
+    setHasCompletedFirstSession,
+    setStreak,
+    currentStreak,
+  } = useUserStore();
 
+  // Audio player
+  const audioPlayer = useAudioPlayer({
+    onPlaybackComplete: handleAudioComplete,
+  });
+
+  // Refresh when app comes to foreground on new day
+  useAppStateRefresh(loadTodayData);
+
+  // Load data on mount
   useEffect(() => {
     loadTodayData();
   }, []);
 
-  const loadTodayData = async () => {
+  // Load audio when URL is available
+  useEffect(() => {
+    if (audioUrl && screenState === 'ready') {
+      audioPlayer.loadAudio(audioUrl);
+    }
+  }, [audioUrl, screenState]);
+
+  async function loadTodayData() {
+    try {
+      setScreenState('loading');
+      const token = await getToken();
+      if (!token) {
+        setError('Not authenticated');
+        return;
+      }
+
+      // Fetch readings and start session in parallel
+      const [readings, session] = await Promise.all([
+        api.getTodayReadings(token),
+        api.startSession(token).catch((err: ApiError) => {
+          // 409 = already completed today
+          if (err.status === 409) {
+            return { session_id: null, already_completed: true };
+          }
+          throw err;
+        }),
+      ]);
+
+      // Update store with readings
+      setReadings({
+        date: readings.date,
+        first_reading: readings.first_reading,
+        gospel: readings.gospel,
+        commentary: readings.commentary_unified,
+        audioUrl: readings.audio_unified_url,
+      });
+
+      // Handle session state
+      if ('already_completed' in session && session.already_completed) {
+        setScreenState('completed');
+      } else if (session.session_id) {
+        setSessionId(session.session_id);
+        setScreenState('ready');
+      }
+    } catch (error) {
+      console.error('Failed to load today data:', error);
+      if (error instanceof ApiError) {
+        if (error.status === 404) {
+          setError('Today\'s readings are not available right now.');
+        } else if (error.status === 401) {
+          setError('Session expired. Please sign in again.');
+        } else {
+          setError('Something went wrong. Please try again.');
+        }
+      } else {
+        setError('Daily Parish needs an internet connection.');
+      }
+    }
+  }
+
+  async function handleAudioComplete() {
+    if (screenState === 'completed' || isCompletingSession) return;
+    
+    setScreenState('content_consumed');
+    await completeSession();
+  }
+
+  async function completeSession() {
+    if (!sessionId || isCompletingSession) return;
+    
+    setIsCompletingSession(true);
     try {
       const token = await getToken();
       if (!token) return;
+
+      const result = await api.completeSession(token, sessionId);
       
-      const data = await api.getTodayReadings(token);
-      setReadings(data);
+      if (result.success) {
+        // Update streak
+        setStreak({
+          current_streak: result.streak.current_streak,
+          longest_streak: result.streak.longest_streak,
+          total_sessions: result.streak.current_streak, // Using current as approximation
+        });
+        
+        // Mark first session complete
+        if (!hasCompletedFirstSession) {
+          setHasCompletedFirstSession(true);
+        }
+        
+        // Haptic feedback
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        setScreenState('completed');
+      }
     } catch (error) {
-      setError('Failed to load today\'s readings');
+      console.error('Failed to complete session:', error);
+      // Still show completion UI (optimistic)
+      setScreenState('completed');
+    } finally {
+      setIsCompletingSession(false);
     }
-  };
+  }
+
+  function handlePlayPause() {
+    audioPlayer.togglePlayback();
+    
+    // Dismiss orientation card on first play
+    if (!hasCompletedFirstSession && !audioPlayer.isPlaying) {
+      setHasCompletedFirstSession(true);
+    }
+    
+    // Update screen state
+    if (screenState === 'ready' && !audioPlayer.isPlaying) {
+      setScreenState('playing');
+    }
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '';
-    const d = new Date(dateString);
+    const d = new Date(dateString + 'T12:00:00'); // Avoid timezone issues
     return d.toLocaleDateString('en-US', { 
       weekday: 'long', 
       month: 'long', 
       day: 'numeric' 
     });
   };
+
+  // Loading state
+  if (screenState === 'loading') {
+    return (
+      <ScreenShell>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.brand.primary} />
+          <Body color="secondary" style={styles.loadingText}>
+            Loading today's readings...
+          </Body>
+        </View>
+      </ScreenShell>
+    );
+  }
+
+  // Error state
+  if (screenState === 'error') {
+    return (
+      <ScreenShell>
+        <View style={styles.centered}>
+          <Body color="secondary" style={styles.errorText}>
+            {useTodayStore.getState().errorMessage || 'Something went wrong.'}
+          </Body>
+          <Button 
+            title="Try again" 
+            variant="ghost" 
+            onPress={loadTodayData}
+            style={styles.retryButton}
+          />
+        </View>
+      </ScreenShell>
+    );
+  }
 
   return (
     <ScreenShell>
@@ -72,28 +236,61 @@ export function TodayScreen() {
       </View>
 
       {/* Orientation Card - First session only */}
-      {!hasCompletedFirstSession && (
-        <Card variant="alt" style={styles.section}>
-          <Body>
-            Today's prayer takes about 5 minutes. Press play to listen, or read along below.
-          </Body>
-        </Card>
+      {!hasCompletedFirstSession && screenState === 'ready' && (
+        <TouchableOpacity onPress={() => setHasCompletedFirstSession(true)}>
+          <Card variant="alt" style={styles.section}>
+            <Body>
+              Today's prayer takes about 5 minutes. Press play to listen, or read along below.
+            </Body>
+          </Card>
+        </TouchableOpacity>
       )}
 
-      {/* Audio Player Placeholder */}
-      <Card style={styles.section}>
-        <View style={styles.audioPlayer}>
-          <View style={styles.playButton}>
-            <Ionicons name="play" size={24} color="#FFFFFF" />
-          </View>
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '0%' }]} />
+      {/* Audio Player */}
+      {screenState !== 'completed' ? (
+        <Card style={styles.section}>
+          <View style={styles.audioPlayer}>
+            <TouchableOpacity 
+              style={styles.playButton}
+              onPress={handlePlayPause}
+              disabled={!audioPlayer.isLoaded && !audioPlayer.error}
+            >
+              {audioPlayer.isBuffering ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Ionicons 
+                  name={audioPlayer.isPlaying ? 'pause' : 'play'} 
+                  size={24} 
+                  color="#FFFFFF" 
+                />
+              )}
+            </TouchableOpacity>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${audioPlayer.progress * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Caption color="muted">
+                {audioPlayer.formattedPosition} / {audioPlayer.formattedDuration}
+              </Caption>
             </View>
-            <Caption color="muted">0:00 / 5:00</Caption>
           </View>
-        </View>
-      </Card>
+        </Card>
+      ) : (
+        // Completed audio state - minimal
+        <Card style={styles.section}>
+          <View style={styles.completedAudio}>
+            <Ionicons name="checkmark" size={16} color={colors.brand.primary} />
+            <Caption color="muted" style={styles.completedAudioText}>
+              Today's audio
+            </Caption>
+          </View>
+        </Card>
+      )}
 
       {/* First Reading */}
       {firstReading && (
@@ -127,11 +324,31 @@ export function TodayScreen() {
         </Card>
       )}
 
-      {/* Loading/Error states would go here */}
-      {screenState === 'loading' && !firstReading && (
-        <Body color="secondary" style={styles.loading}>
-          Loading today's readings...
-        </Body>
+      {/* Mark as Complete button (for silent readers) */}
+      {screenState === 'content_consumed' && !isCompletingSession && (
+        <Button
+          title="Mark as complete"
+          variant="ghost"
+          onPress={completeSession}
+          style={styles.completeButton}
+        />
+      )}
+
+      {/* Completion Panel */}
+      {screenState === 'completed' && (
+        <Card style={styles.completionPanel}>
+          <Ionicons name="checkmark" size={32} color={colors.accent.gold} />
+          <DisplayMd style={styles.completionTitle}>You prayed today.</DisplayMd>
+          <Body color="secondary">
+            {currentStreak} {currentStreak === 1 ? 'day' : 'days'} of prayer
+          </Body>
+          <Button
+            title="View History"
+            variant="ghost"
+            onPress={() => navigation.navigate('History' as never)}
+            style={styles.historyButton}
+          />
+        </Card>
       )}
     </ScreenShell>
   );
@@ -146,6 +363,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     padding: spacing.sm,
+    zIndex: 1,
   },
   section: {
     marginBottom: spacing['2xl'],
@@ -171,11 +389,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border.subtle,
     borderRadius: 2,
     marginBottom: spacing.xs,
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     backgroundColor: colors.brand.primary,
     borderRadius: 2,
+  },
+  completedAudio: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+  },
+  completedAudioText: {
+    marginLeft: spacing.xs,
   },
   reference: {
     marginBottom: spacing.sm,
@@ -188,8 +416,36 @@ const styles = StyleSheet.create({
   commentaryLabel: {
     marginBottom: spacing.sm,
   },
-  loading: {
+  completeButton: {
+    alignSelf: 'center',
+    marginBottom: spacing['2xl'],
+  },
+  completionPanel: {
+    alignItems: 'center',
+    paddingVertical: spacing['3xl'],
+    marginBottom: spacing['2xl'],
+  },
+  completionTitle: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  historyButton: {
+    marginTop: spacing.xl,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.lg,
+  },
+  errorText: {
     textAlign: 'center',
-    marginTop: spacing['3xl'],
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+  },
+  retryButton: {
+    marginTop: spacing.sm,
   },
 });

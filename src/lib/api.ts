@@ -2,6 +2,14 @@
  * API Client for Daily Parish
  */
 
+import type {
+  TodayResponse,
+  SessionStartResponse,
+  SessionCompleteResponse,
+  HistoryResponse,
+  UserResponse,
+} from '../types';
+
 const API_BASE_URL = 'https://daily-parish-beta.vercel.app/api';
 
 interface RequestOptions {
@@ -10,7 +18,7 @@ interface RequestOptions {
   token?: string;
 }
 
-class ApiError extends Error {
+export class ApiError extends Error {
   status: number;
   
   constructor(message: string, status: number) {
@@ -49,17 +57,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 export const api = {
   // Readings
   getTodayReadings: (token: string) => 
-    request<import('../types').TodayResponse>('/readings/today', { token }),
+    request<TodayResponse>('/readings/today', { token }),
   
   // Sessions
   startSession: (token: string) =>
-    request<import('../types').SessionStartResponse>('/session/start', { 
+    request<SessionStartResponse>('/session/start', { 
       method: 'POST', 
       token 
     }),
   
   completeSession: (token: string, sessionId: string) =>
-    request<import('../types').SessionCompleteResponse>('/session/complete', {
+    request<SessionCompleteResponse>('/session/complete', {
       method: 'POST',
       body: { session_id: sessionId },
       token,
@@ -67,14 +75,12 @@ export const api = {
   
   // History
   getHistory: (token: string) =>
-    request<import('../types').HistoryResponse>('/history', { token }),
+    request<HistoryResponse>('/history', { token }),
   
   // User
   getUser: (token: string) =>
-    request<import('../types').UserResponse>('/user', { token }),
+    request<UserResponse>('/user', { token }),
   
   deleteUser: (token: string) =>
     request<{ success: boolean }>('/user', { method: 'DELETE', token }),
 };
-
-export { ApiError };
