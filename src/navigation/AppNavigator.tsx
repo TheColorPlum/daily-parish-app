@@ -8,6 +8,7 @@ import {
   HistoryScreen,
   SettingsScreen,
 } from '../screens';
+import { useUserLoader } from '../hooks';
 import { colors } from '../theme';
 
 // Type definitions for navigation
@@ -38,6 +39,9 @@ function AuthNavigator() {
 }
 
 function MainNavigator() {
+  // Load user profile on auth
+  useUserLoader();
+  
   return (
     <MainStack.Navigator
       screenOptions={{
