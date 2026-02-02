@@ -209,6 +209,14 @@ export function TodayScreen() {
   if (screenState === 'error') {
     return (
       <ScreenShell>
+        <View style={styles.errorHeader}>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings' as never)}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
         <View style={styles.centered}>
           <Body color="secondary" style={styles.errorText}>
             {useTodayStore.getState().errorMessage || 'Something went wrong.'}
@@ -440,6 +448,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   loadingText: {
     marginTop: spacing.lg,
