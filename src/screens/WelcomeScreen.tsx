@@ -1,48 +1,227 @@
-import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSignIn, useSignUp } from '@clerk/clerk-expo';
-import { ScreenShell, Button, DisplayLg, Body } from '../components';
-import { spacing } from '../theme';
+import { ScreenShell, Button, DisplayLg, Body, Caption } from '../components';
+import { colors, spacing, radius } from '../theme';
+
+type AuthMode = 'welcome' | 'signIn' | 'signUp';
 
 export function WelcomeScreen() {
-  // TODO: Implement Clerk sign up/in flows
-  const { signUp, setActive: setSignUpActive } = useSignUp();
-  const { signIn, setActive: setSignInActive } = useSignIn();
+  const { signIn, setActive: setSignInActive, isLoaded: isSignInLoaded } = useSignIn();
+  const { signUp, setActive: setSignUpActive, isLoaded: isSignUpLoaded } = useSignUp();
+  
+  const [mode, setMode] = useState<AuthMode>('welcome');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
 
-  const handleCreateAccount = async () => {
-    // TODO: Navigate to Clerk sign up UI
-    console.log('Create account');
-  };
+  const handleSignUp = useCallback(async () => {
+    if (!isSignUpLoaded || !signUp) return;
+    
+    setLoading(true);
+    try {
+      await signUp.create({
+        emailAddress: email,
+        password,
+      });
 
-  const handleSignIn = async () => {
-    // TODO: Navigate to Clerk sign in UI
-    console.log('Sign in');
-  };
+      // Send email verification
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      setPendingVerification(true);
+    } catch (err: any) {
+      console.error('Sign up error:', err);
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
+  }, [isSignUpLoaded, signUp, email, password]);
 
+  const handleVerify = useCallback(async () => {
+    if (!isSignUpLoaded || !signUp) return;
+
+    setLoading(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode,
+      });
+
+      if (result.status === 'complete') {
+        await setSignUpActive({ session: result.createdSessionId });
+      } else {
+        console.log('Verification incomplete:', result);
+      }
+    } catch (err: any) {
+      console.error('Verification error:', err);
+      Alert.alert('Error', err.errors?.[0]?.message || 'Invalid verification code');
+    } finally {
+      setLoading(false);
+    }
+  }, [isSignUpLoaded, signUp, verificationCode, setSignUpActive]);
+
+  const handleSignIn = useCallback(async () => {
+    if (!isSignInLoaded || !signIn) return;
+
+    setLoading(true);
+    try {
+      const result = await signIn.create({
+        identifier: email,
+        password,
+      });
+
+      if (result.status === 'complete') {
+        await setSignInActive({ session: result.createdSessionId });
+      } else {
+        console.log('Sign in incomplete:', result);
+      }
+    } catch (err: any) {
+      console.error('Sign in error:', err);
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to sign in');
+    } finally {
+      setLoading(false);
+    }
+  }, [isSignInLoaded, signIn, email, password, setSignInActive]);
+
+  // Welcome screen
+  if (mode === 'welcome') {
+    return (
+      <ScreenShell scrollable={false}>
+        <View style={styles.content}>
+          <View style={styles.iconPlaceholder} />
+          <DisplayLg style={styles.title}>Daily Parish</DisplayLg>
+          <Body color="secondary" style={styles.tagline}>
+            A quiet daily prayer practice.
+          </Body>
+        </View>
+        
+        <View style={styles.buttons}>
+          <Button 
+            title="Create Account" 
+            onPress={() => setMode('signUp')}
+            style={styles.primaryButton}
+          />
+          <Button 
+            title="Sign In" 
+            variant="ghost"
+            onPress={() => setMode('signIn')}
+          />
+        </View>
+      </ScreenShell>
+    );
+  }
+
+  // Verification screen
+  if (pendingVerification) {
+    return (
+      <ScreenShell scrollable={false}>
+        <KeyboardAvoidingView 
+          style={styles.authContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <DisplayLg style={styles.authTitle}>Check your email</DisplayLg>
+          <Body color="secondary" style={styles.authSubtitle}>
+            We sent a verification code to {email}
+          </Body>
+
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Verification code"
+              placeholderTextColor={colors.text.muted}
+              value={verificationCode}
+              onChangeText={setVerificationCode}
+              keyboardType="number-pad"
+              autoFocus
+            />
+
+            <Button
+              title="Verify"
+              onPress={handleVerify}
+              loading={loading}
+              disabled={!verificationCode}
+              style={styles.submitButton}
+            />
+          </View>
+
+          <Button
+            title="Back"
+            variant="ghost"
+            onPress={() => {
+              setPendingVerification(false);
+              setMode('welcome');
+            }}
+          />
+        </KeyboardAvoidingView>
+      </ScreenShell>
+    );
+  }
+
+  // Sign In / Sign Up form
+  const isSignUp = mode === 'signUp';
+  
   return (
     <ScreenShell scrollable={false}>
-      <View style={styles.content}>
-        {/* App Icon Placeholder */}
-        <View style={styles.iconPlaceholder} />
-        
-        <DisplayLg style={styles.title}>Daily Parish</DisplayLg>
-        <Body color="secondary" style={styles.tagline}>
-          A quiet daily prayer practice.
+      <KeyboardAvoidingView 
+        style={styles.authContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <DisplayLg style={styles.authTitle}>
+          {isSignUp ? 'Create Account' : 'Welcome Back'}
+        </DisplayLg>
+        <Body color="secondary" style={styles.authSubtitle}>
+          {isSignUp 
+            ? 'Start your daily prayer practice' 
+            : 'Sign in to continue'}
         </Body>
-      </View>
-      
-      <View style={styles.buttons}>
-        <Button 
-          title="Create Account" 
-          onPress={handleCreateAccount}
-          style={styles.primaryButton}
-        />
-        <Button 
-          title="Sign In" 
+
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={colors.text.muted}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={colors.text.muted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <Button
+            title={isSignUp ? 'Create Account' : 'Sign In'}
+            onPress={isSignUp ? handleSignUp : handleSignIn}
+            loading={loading}
+            disabled={!email || !password}
+            style={styles.submitButton}
+          />
+        </View>
+
+        <View style={styles.switchMode}>
+          <Caption color="secondary">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+          </Caption>
+          <Button
+            title={isSignUp ? 'Sign In' : 'Create Account'}
+            variant="ghost"
+            onPress={() => setMode(isSignUp ? 'signIn' : 'signUp')}
+          />
+        </View>
+
+        <Button
+          title="Back"
           variant="ghost"
-          onPress={handleSignIn}
+          onPress={() => setMode('welcome')}
         />
-      </View>
+      </KeyboardAvoidingView>
     </ScreenShell>
   );
 }
@@ -52,7 +231,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100, // Push content up from center
+    paddingBottom: 100,
   },
   iconPlaceholder: {
     width: 64,
@@ -73,5 +252,39 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginBottom: spacing.sm,
+  },
+  // Auth form styles
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  authTitle: {
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  authSubtitle: {
+    textAlign: 'center',
+    marginBottom: spacing['3xl'],
+  },
+  form: {
+    marginBottom: spacing['2xl'],
+  },
+  input: {
+    backgroundColor: colors.bg.elevated,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    fontSize: 16,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  submitButton: {
+    marginTop: spacing.sm,
+  },
+  switchMode: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
 });
