@@ -70,6 +70,10 @@ export function TodayScreen() {
     try {
       setScreenState('loading');
       const token = await getToken();
+      
+      // Debug logging
+      console.log('[TodayScreen] Token received:', token ? `${token.substring(0, 20)}...` : 'NULL');
+      
       if (!token) {
         setError('Not authenticated');
         return;

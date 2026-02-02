@@ -39,6 +39,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Authorization'] = `Bearer ${token}`;
   }
   
+  // Debug logging
+  console.log(`[API] ${method} ${endpoint}`, { hasToken: !!token });
+  
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
     headers,
