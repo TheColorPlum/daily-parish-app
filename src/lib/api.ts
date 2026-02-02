@@ -10,7 +10,7 @@ import type {
   UserResponse,
 } from '../types';
 
-const API_BASE_URL = 'https://daily-parish-beta.vercel.app/api';
+const API_BASE_URL = 'https://daily-word-beta.vercel.app/api';
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
