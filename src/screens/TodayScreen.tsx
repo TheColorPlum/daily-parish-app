@@ -10,8 +10,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
+import type { DrawerParamList } from '../navigation/AppNavigator';
 import { useAuth } from '@clerk/clerk-expo';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -32,7 +34,7 @@ import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function TodayScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const { getToken } = useAuth();
   const [isCompletingSession, setIsCompletingSession] = useState(false);
   const [showReading, setShowReading] = useState(false);
@@ -308,13 +310,13 @@ export function TodayScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <View style={{ width: 44 }} />
           <Pressable 
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings' as never)}
+            style={styles.menuButton}
+            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
+            <Ionicons name="menu" size={24} color={colors.text.secondary} />
           </Pressable>
+          <View style={{ width: 44 }} />
         </View>
         <View style={styles.centered}>
           <Text style={styles.errorText}>
@@ -380,13 +382,13 @@ export function TodayScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ width: 44 }} />
           <Pressable 
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings' as never)}
+            style={styles.menuButton}
+            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
+            <Ionicons name="menu" size={24} color={colors.text.secondary} />
           </Pressable>
+          <View style={{ width: 44 }} />
         </View>
 
         <Animated.View entering={FadeIn.duration(600)} style={styles.completedContainer}>
@@ -496,13 +498,13 @@ export function TodayScreen() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ width: 44 }} />
         <Pressable 
-          style={styles.settingsButton}
-          onPress={() => navigation.navigate('Settings' as never)}
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
+          <Ionicons name="menu" size={24} color={colors.text.secondary} />
         </Pressable>
+        <View style={{ width: 44 }} />
       </View>
 
       {/* Main Content */}
@@ -579,7 +581,7 @@ export function TodayScreen() {
         </View>
 
         {/* Mark Complete button - for read-only mode */}
-        {!audioUrl && screenState !== 'completed' && (
+        {!audioUrl && (
           <Pressable 
             style={styles.markCompleteButton}
             onPress={() => {
@@ -613,11 +615,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
   },
-  settingsButton: {
+  menuButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
 
   // Main Content

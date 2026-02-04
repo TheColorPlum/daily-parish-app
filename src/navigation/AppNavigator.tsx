@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useAuth } from '@clerk/clerk-expo';
 import {
   WelcomeScreen,
@@ -8,8 +9,10 @@ import {
   HistoryScreen,
   HistoryDetailScreen,
   SettingsScreen,
+  ProfileScreen,
   ComponentDemo,
 } from '../screens';
+import { DrawerContent } from './DrawerContent';
 import { useUserLoader } from '../hooks';
 import { colors } from '../theme';
 import type { HistoryItem } from '../types';
@@ -19,16 +22,22 @@ export type AuthStackParamList = {
   Welcome: undefined;
 };
 
-export type MainStackParamList = {
+export type DrawerParamList = {
   Today: undefined;
   History: undefined;
-  HistoryDetail: { item: HistoryItem };
   Settings: undefined;
+  Profile: undefined;
+};
+
+export type RootStackParamList = {
+  Main: undefined;
+  HistoryDetail: { item: HistoryItem };
   ComponentDemo: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
-const MainStack = createNativeStackNavigator<MainStackParamList>();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
+const Drawer = createDrawerNavigator<DrawerParamList>();
 
 function AuthNavigator() {
   return (
@@ -43,24 +52,43 @@ function AuthNavigator() {
   );
 }
 
+function DrawerNavigator() {
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <DrawerContent {...props} />}
+      screenOptions={{
+        headerShown: false,
+        drawerStyle: {
+          backgroundColor: colors.bg.surface,
+          width: 280,
+        },
+        sceneStyle: { backgroundColor: colors.bg.surface },
+      }}
+    >
+      <Drawer.Screen name="Today" component={TodayScreen} />
+      <Drawer.Screen name="History" component={HistoryScreen} />
+      <Drawer.Screen name="Settings" component={SettingsScreen} />
+      <Drawer.Screen name="Profile" component={ProfileScreen} />
+    </Drawer.Navigator>
+  );
+}
+
 function MainNavigator() {
   // Load user profile on auth
   useUserLoader();
   
   return (
-    <MainStack.Navigator
+    <RootStack.Navigator
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg.surface },
         animation: 'slide_from_right',
       }}
     >
-      <MainStack.Screen name="Today" component={TodayScreen} />
-      <MainStack.Screen name="History" component={HistoryScreen} />
-      <MainStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-      <MainStack.Screen name="Settings" component={SettingsScreen} />
-      <MainStack.Screen name="ComponentDemo" component={ComponentDemo} />
-    </MainStack.Navigator>
+      <RootStack.Screen name="Main" component={DrawerNavigator} />
+      <RootStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
+      <RootStack.Screen name="ComponentDemo" component={ComponentDemo} />
+    </RootStack.Navigator>
   );
 }
 

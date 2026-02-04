@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { 
@@ -16,9 +16,9 @@ import {
 import { api } from '../lib';
 import { colors, spacing } from '../theme';
 import type { HistoryItem } from '../types';
-import type { MainStackParamList } from '../navigation';
+import type { DrawerParamList } from '../navigation/AppNavigator';
 
-type HistoryScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'History'>;
+type HistoryScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'History'>;
 
 export function HistoryScreen() {
   const navigation = useNavigation<HistoryScreenNavigationProp>();
@@ -65,7 +65,8 @@ export function HistoryScreen() {
   };
 
   const handleItemPress = (item: HistoryItem) => {
-    navigation.navigate('HistoryDetail', { item });
+    // Navigate to HistoryDetail which is on the RootStack
+    (navigation as any).navigate('HistoryDetail', { item });
   };
 
   const renderItem = ({ item }: { item: HistoryItem }) => (
@@ -110,10 +111,10 @@ export function HistoryScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name="menu" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
         <DisplayMd>History</DisplayMd>
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing['2xl'],
   },
-  backButton: {
+  menuButton: {
     marginRight: spacing.lg,
   },
   list: {

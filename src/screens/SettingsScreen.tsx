@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { MainStackParamList } from '../navigation/AppNavigator';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
+import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import type { DrawerParamList } from '../navigation/AppNavigator';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, useUser } from '@clerk/clerk-expo';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { 
   ScreenShell, 
-  Button,
   DisplayMd, 
   Body,
   BodyStrong,
   Caption,
 } from '../components';
-import { useSettingsStore, useUserStore, useTodayStore } from '../stores';
+import { useSettingsStore } from '../stores';
 import { 
-  api, 
   requestNotificationPermissions, 
   scheduleDailyReminder, 
   cancelDailyReminder,
@@ -24,13 +21,8 @@ import {
 } from '../lib';
 import { colors, spacing, radius } from '../theme';
 
-// App version - update with each release
-const APP_VERSION = '1.0.0';
-
 export function SettingsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const { signOut, getToken } = useAuth();
-  const { user } = useUser();
+  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const [showTimePicker, setShowTimePicker] = useState(false);
   
   const { 
@@ -42,10 +34,6 @@ export function SettingsScreen() {
     setReminderTime,
     setNotificationPermissionGranted,
   } = useSettingsStore();
-  
-  const { currentStreak } = useUserStore();
-  const clearUser = useUserStore((state) => state.clearUser);
-  const clearToday = useTodayStore((state) => state.clearToday);
 
   // Check notification permissions on mount
   useEffect(() => {
@@ -102,54 +90,6 @@ export function SettingsScreen() {
     }
   }
 
-  function handleSignOut() {
-    Alert.alert(
-      'Sign out?',
-      'You\'ll need to sign in again next time.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            await cancelDailyReminder();
-            await signOut();
-            clearUser();
-            clearToday();
-          },
-        },
-      ]
-    );
-  }
-
-  function handleDeleteAccount() {
-    Alert.alert(
-      'Delete account?',
-      'This will permanently delete your account, prayer history, and reflections. This can\'t be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await getToken();
-              if (token) {
-                await api.deleteUser(token);
-              }
-              await cancelDailyReminder();
-              await signOut();
-              clearUser();
-              clearToday();
-            } catch (error) {
-              Alert.alert('Error', 'Something went wrong. Please try again.');
-            }
-          },
-        },
-      ]
-    );
-  }
-
   const formatTime = (hour: number, minute: number) => {
     const period = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
@@ -167,32 +107,13 @@ export function SettingsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          style={styles.menuButton}
+          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
+          <Ionicons name="menu" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
         <DisplayMd>Settings</DisplayMd>
-      </View>
-
-      {/* Account Section */}
-      <Caption color="muted" style={styles.sectionLabel}>Account</Caption>
-      <View style={styles.section}>
-        <View style={styles.row}>
-          <BodyStrong>Email</BodyStrong>
-          <Body color="secondary" numberOfLines={1} style={styles.emailText}>
-            {user?.emailAddresses[0]?.emailAddress || '—'}
-          </Body>
-        </View>
-        {currentStreak > 0 && (
-          <View style={[styles.row, styles.rowBorder]}>
-            <BodyStrong>Current streak</BodyStrong>
-            <Body color="secondary">
-              {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
-            </Body>
-          </View>
-        )}
       </View>
 
       {/* Notifications Section */}
@@ -240,47 +161,6 @@ export function SettingsScreen() {
           onChange={handleTimeChange}
         />
       )}
-
-      {/* Developer Section */}
-      <Caption color="muted" style={styles.sectionLabel}>Developer</Caption>
-      <View style={styles.section}>
-        <TouchableOpacity 
-          style={styles.row}
-          onPress={() => navigation.navigate('ComponentDemo')}
-        >
-          <BodyStrong>Component Demo</BodyStrong>
-          <View style={styles.timeRow}>
-            <Body color="secondary">Reacticx UI</Body>
-            <Ionicons 
-              name="chevron-forward" 
-              size={16} 
-              color={colors.text.muted} 
-              style={styles.chevron}
-            />
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      {/* Actions Section */}
-      <View style={styles.actions}>
-        <Button
-          title="Sign Out"
-          variant="ghost"
-          destructive
-          onPress={handleSignOut}
-        />
-        <Button
-          title="Delete Account"
-          variant="ghost"
-          destructive
-          onPress={handleDeleteAccount}
-        />
-      </View>
-
-      {/* Version Footer */}
-      <Caption color="muted" style={styles.version}>
-        Version {APP_VERSION}
-      </Caption>
     </ScreenShell>
   );
 }
@@ -291,7 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing['2xl'],
   },
-  backButton: {
+  menuButton: {
     marginRight: spacing.lg,
   },
   sectionLabel: {
@@ -315,24 +195,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border.subtle,
   },
-  emailText: {
-    flex: 1,
-    textAlign: 'right',
-    marginLeft: spacing.lg,
-  },
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   chevron: {
     marginLeft: spacing.xs,
-  },
-  actions: {
-    marginTop: spacing.xl,
-    alignItems: 'center',
-  },
-  version: {
-    textAlign: 'center',
-    marginTop: spacing['3xl'],
   },
 });

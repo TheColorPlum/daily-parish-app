@@ -12,9 +12,9 @@ import {
   ScriptureBody,
 } from '../components';
 import { colors, spacing } from '../theme';
-import type { MainStackParamList } from '../navigation';
+import type { RootStackParamList } from '../navigation/AppNavigator';
 
-type HistoryDetailRouteProp = RouteProp<MainStackParamList, 'HistoryDetail'>;
+type HistoryDetailRouteProp = RouteProp<RootStackParamList, 'HistoryDetail'>;
 
 export function HistoryDetailScreen() {
   const navigation = useNavigation();
