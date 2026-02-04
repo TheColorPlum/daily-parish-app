@@ -168,6 +168,8 @@ export function TodayScreen() {
         }),
       ]);
 
+      console.log('[TodayScreen] API Response:', JSON.stringify(readings, null, 2));
+
       setReadings({
         date: readings.date,
         first_reading: readings.first_reading,
