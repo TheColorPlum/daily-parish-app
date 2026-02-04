@@ -141,12 +141,15 @@ export function ComponentDemo() {
   const handleCompletion = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
-    // Animate streak
-    setStreak(prev => {
-      const newStreak = prev + 1;
-      streakValue.value = newStreak;
-      return newStreak;
-    });
+    // Delay streak animation so user sees it roll up after screen appears
+    setTimeout(() => {
+      setStreak(prev => {
+        const newStreak = prev + 1;
+        streakValue.value = newStreak;
+        return newStreak;
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }, 800);
   }, []);
 
   const formatTime = (seconds: number) => {
