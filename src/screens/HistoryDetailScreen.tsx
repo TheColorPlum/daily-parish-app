@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { lightColors as colors, spacing } from '../theme';
+import { useTheme, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type HistoryDetailRouteProp = RouteProp<RootStackParamList, 'HistoryDetail'>;
 
 export function HistoryDetailScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const route = useRoute<HistoryDetailRouteProp>();
   const { item } = route.params;
 
@@ -21,6 +22,8 @@ export function HistoryDetailScreen() {
       day: 'numeric' 
     });
   };
+
+  const styles = createStyles(colors);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -63,7 +66,7 @@ export function HistoryDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.surface,

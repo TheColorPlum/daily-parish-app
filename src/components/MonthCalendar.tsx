@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { lightColors as colors, spacing } from '../theme';
+import { useTheme, spacing } from '../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DAY_SIZE = Math.floor((SCREEN_WIDTH - 48 - 12) / 7); // 48 = padding, 12 = gaps
@@ -20,6 +20,7 @@ interface MonthCalendarProps {
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export function MonthCalendar({ completedDates, availableDates, onDayPress, initialDate }: MonthCalendarProps) {
+  const { colors } = useTheme();
   const [currentDate, setCurrentDate] = useState(initialDate || new Date());
   
   const today = new Date();
@@ -81,6 +82,8 @@ export function MonthCalendar({ completedDates, availableDates, onDayPress, init
       onDayPress(dateStr, hasSession);
     }
   }
+
+  const styles = createStyles(colors);
   
   return (
     <View style={styles.container}>
@@ -137,18 +140,18 @@ export function MonthCalendar({ completedDates, availableDates, onDayPress, init
             >
               <View style={[
                 styles.dayInner,
-                isToday && styles.todayRing,
+                isToday && { borderWidth: 2, borderColor: colors.accent },
               ]}>
                 <Text style={[
                   styles.dayText,
-                  isFuture && styles.futureText,
-                  isToday && styles.todayText,
+                  isFuture && { color: colors.text.muted },
+                  isToday && { fontWeight: '600', color: colors.accent },
                 ]}>
                   {day}
                 </Text>
                 
                 {isCompleted && (
-                  <View style={styles.completedDot} />
+                  <View style={[styles.completedDot, { backgroundColor: colors.accent }]} />
                 )}
               </View>
             </TouchableOpacity>
@@ -159,7 +162,7 @@ export function MonthCalendar({ completedDates, availableDates, onDayPress, init
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     paddingHorizontal: spacing.lg,
   },
@@ -213,20 +216,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: (DAY_SIZE - 8) / 2,
   },
-  todayRing: {
-    borderWidth: 2,
-    borderColor: colors.accent,
-  },
   dayText: {
     fontSize: 16,
     color: colors.text.primary,
-  },
-  futureText: {
-    color: colors.text.muted,
-  },
-  todayText: {
-    fontWeight: '600',
-    color: colors.accent,
   },
   completedDot: {
     position: 'absolute',
@@ -234,6 +226,5 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.accent,
   },
 });

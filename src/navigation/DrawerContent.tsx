@@ -1,18 +1,12 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { DrawerContentScrollView, DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-  DisplayMd, 
-  Body, 
-  BodyStrong,
-  Caption,
-} from '../components';
-import { useUserStore, useTodayStore, useSettingsStore } from '../stores';
+import { useUserStore, useTodayStore } from '../stores';
 import { cancelDailyReminder } from '../lib';
-import { colors, spacing, radius } from '../theme';
+import { useTheme, spacing, radius } from '../theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -22,37 +16,39 @@ interface DrawerItemProps {
   onPress: () => void;
   isActive?: boolean;
   destructive?: boolean;
+  colors: ReturnType<typeof useTheme>['colors'];
 }
 
-function DrawerItem({ icon, label, onPress, isActive, destructive }: DrawerItemProps) {
+function DrawerItem({ icon, label, onPress, isActive, destructive, colors }: DrawerItemProps) {
   return (
     <TouchableOpacity 
       style={[
         styles.drawerItem,
-        isActive && styles.drawerItemActive,
+        isActive && { backgroundColor: colors.accentSoft },
       ]} 
       onPress={onPress}
     >
       <Ionicons 
         name={icon} 
         size={22} 
-        color={destructive ? colors.accent.red : (isActive ? colors.brand.primary : colors.text.secondary)} 
+        color={destructive ? '#B5564A' : (isActive ? colors.accent : colors.text.secondary)} 
       />
-      <BodyStrong 
-        style={StyleSheet.flatten([
+      <Text 
+        style={[
           styles.drawerItemLabel,
-          destructive && { color: colors.accent.red },
-          isActive && { color: colors.brand.primary },
-        ]) as TextStyle}
+          { color: destructive ? '#B5564A' : (isActive ? colors.accent : colors.text.primary) },
+          isActive && { fontWeight: '600' },
+        ]}
       >
         {label}
-      </BodyStrong>
+      </Text>
     </TouchableOpacity>
   );
 }
 
 export function DrawerContent(props: DrawerContentComponentProps) {
   const { navigation, state } = props;
+  const { colors } = useTheme();
   const { signOut } = useAuth();
   const { user } = useUser();
   const insets = useSafeAreaInsets();
@@ -73,26 +69,28 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const userEmail = user?.emailAddresses[0]?.emailAddress || '';
   const userInitial = userEmail.charAt(0).toUpperCase() || '?';
 
+  const dynamicStyles = createDynamicStyles(colors);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[dynamicStyles.container, { paddingTop: insets.top }]}>
       <DrawerContentScrollView {...props} contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <BodyStrong style={styles.avatarText}>{userInitial}</BodyStrong>
+          <View style={[styles.avatar, { backgroundColor: colors.accentSoft }]}>
+            <Text style={[styles.avatarText, { color: colors.accent }]}>{userInitial}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Body numberOfLines={1} style={styles.email}>{userEmail}</Body>
+            <Text style={[styles.email, { color: colors.text.primary }]} numberOfLines={1}>{userEmail}</Text>
             {currentStreak > 0 && (
-              <Caption color="muted">
+              <Text style={[styles.streakText, { color: colors.text.muted }]}>
                 🔥 {currentStreak} day streak
-              </Caption>
+              </Text>
             )}
           </View>
         </View>
 
         {/* Divider */}
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
         {/* Navigation Items */}
         <View style={styles.nav}>
@@ -101,29 +99,33 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             label="Today"
             isActive={currentRoute === 'Today'}
             onPress={() => navigation.navigate('Today')}
+            colors={colors}
           />
           <DrawerItem
             icon="time-outline"
             label="History"
             isActive={currentRoute === 'History'}
             onPress={() => navigation.navigate('History')}
+            colors={colors}
           />
           <DrawerItem
             icon="settings-outline"
             label="Settings"
             isActive={currentRoute === 'Settings'}
             onPress={() => navigation.navigate('Settings')}
+            colors={colors}
           />
           <DrawerItem
             icon="person-outline"
             label="Profile"
             isActive={currentRoute === 'Profile'}
             onPress={() => navigation.navigate('Profile')}
+            colors={colors}
           />
         </View>
 
         {/* Divider */}
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
         {/* Sign Out */}
         <View style={styles.nav}>
@@ -132,23 +134,27 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             label="Sign Out"
             destructive
             onPress={handleSignOut}
+            colors={colors}
           />
         </View>
       </DrawerContentScrollView>
 
       {/* Version Footer */}
-      <Caption color="muted" style={StyleSheet.flatten([styles.version, { paddingBottom: insets.bottom + spacing.lg }])}>
+      <Text style={[styles.version, { color: colors.text.muted, paddingBottom: insets.bottom + spacing.lg }]}>
         Version 1.0.0
-      </Caption>
+      </Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createDynamicStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.surface,
   },
+});
+
+const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: spacing.xl,
   },
@@ -162,23 +168,26 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.brand.primarySoft,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: colors.brand.primary,
+    fontSize: 18,
+    fontWeight: '600',
   },
   headerInfo: {
     flex: 1,
     marginLeft: spacing.lg,
   },
   email: {
+    fontSize: 16,
     marginBottom: 2,
+  },
+  streakText: {
+    fontSize: 13,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border.subtle,
     marginHorizontal: spacing.xl,
     marginVertical: spacing.md,
   },
@@ -193,14 +202,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginBottom: spacing.xs,
   },
-  drawerItemActive: {
-    backgroundColor: colors.brand.primarySoft,
-  },
   drawerItemLabel: {
+    fontSize: 16,
+    fontWeight: '500',
     marginLeft: spacing.lg,
   },
   version: {
     textAlign: 'center',
+    fontSize: 13,
     paddingVertical: spacing.lg,
   },
 });

@@ -28,13 +28,15 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTodayStore, useUserStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError } from '../lib';
-import { lightColors as colors, spacing, radius, shadow } from '../theme';
+import { useTheme, spacing, radius, shadow } from '../theme';
 import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function TodayScreen() {
   const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const { getToken } = useAuth();
   const [isCompletingSession, setIsCompletingSession] = useState(false);
   const [showReading, setShowReading] = useState(false);
@@ -601,7 +603,7 @@ export function TodayScreen() {
 // STYLES
 // ============================================
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.surface,

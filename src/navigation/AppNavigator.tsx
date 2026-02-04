@@ -14,7 +14,7 @@ import {
 } from '../screens';
 import { DrawerContent } from './DrawerContent';
 import { useUserLoader } from '../hooks';
-import { colors } from '../theme';
+import { useTheme } from '../theme';
 import type { HistoryItem } from '../types';
 
 // Type definitions for navigation
@@ -40,6 +40,8 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator<DrawerParamList>();
 
 function AuthNavigator() {
+  const { colors } = useTheme();
+  
   return (
     <AuthStack.Navigator
       screenOptions={{
@@ -53,6 +55,8 @@ function AuthNavigator() {
 }
 
 function DrawerNavigator() {
+  const { colors } = useTheme();
+  
   return (
     <Drawer.Navigator
       drawerContent={(props) => <DrawerContent {...props} />}
@@ -74,6 +78,8 @@ function DrawerNavigator() {
 }
 
 function MainNavigator() {
+  const { colors } = useTheme();
+  
   // Load user profile on auth
   useUserLoader();
   

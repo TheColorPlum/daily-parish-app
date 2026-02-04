@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SecureStore from 'expo-secure-store';
 import { AppNavigator } from './src/navigation';
+import { ThemeProvider, useTheme } from './src/theme';
 
 // Token cache for Clerk using SecureStore
 const tokenCache = {
@@ -28,6 +29,11 @@ const tokenCache = {
 // In production, this should be set via app.config.js or EAS secrets
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
 
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
 export default function App() {
   if (!CLERK_PUBLISHABLE_KEY) {
     console.warn('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY');
@@ -35,17 +41,19 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ClerkProvider 
-        publishableKey={CLERK_PUBLISHABLE_KEY}
-        tokenCache={tokenCache}
-      >
-        <ClerkLoaded>
-          <SafeAreaProvider>
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </SafeAreaProvider>
-        </ClerkLoaded>
-      </ClerkProvider>
+      <ThemeProvider>
+        <ClerkProvider 
+          publishableKey={CLERK_PUBLISHABLE_KEY}
+          tokenCache={tokenCache}
+        >
+          <ClerkLoaded>
+            <SafeAreaProvider>
+              <ThemedStatusBar />
+              <AppNavigator />
+            </SafeAreaProvider>
+          </ClerkLoaded>
+        </ClerkProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

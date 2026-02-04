@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { api, ApiError } from '../lib';
-import { lightColors as colors, spacing } from '../theme';
+import { useTheme, spacing } from '../theme';
 import type { HistoryItem } from '../types';
 import type { DrawerParamList } from '../navigation/AppNavigator';
 
@@ -15,6 +15,7 @@ type HistoryScreenNavigationProp = DrawerNavigationProp<DrawerParamList, 'Histor
 
 export function HistoryScreen() {
   const navigation = useNavigation<HistoryScreenNavigationProp>();
+  const { colors } = useTheme();
   const { getToken } = useAuth();
   const [sessions, setSessions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +119,8 @@ export function HistoryScreen() {
     }
   };
 
+  const styles = createStyles(colors);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -189,7 +192,7 @@ export function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.surface,

@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { DrawerParamList } from '../navigation/AppNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { 
-  ScreenShell, 
-  DisplayMd, 
-  Body,
-  BodyStrong,
-  Caption,
-} from '../components';
 import { useSettingsStore } from '../stores';
 import { 
   requestNotificationPermissions, 
@@ -19,10 +13,19 @@ import {
   cancelDailyReminder,
   checkNotificationPermissions,
 } from '../lib';
-import { colors, spacing, radius } from '../theme';
+import { useTheme, spacing, radius } from '../theme';
+
+type ThemeMode = 'light' | 'dark' | 'system';
+
+const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+];
 
 export function SettingsScreen() {
   const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
+  const { colors, mode, setMode } = useTheme();
   const [showTimePicker, setShowTimePicker] = useState(false);
   
   const { 
@@ -47,7 +50,6 @@ export function SettingsScreen() {
 
   async function handleToggleReminder(value: boolean) {
     if (value) {
-      // Enabling - request permissions first
       const granted = await requestNotificationPermissions();
       setNotificationPermissionGranted(granted);
       
@@ -60,11 +62,9 @@ export function SettingsScreen() {
         return;
       }
       
-      // Schedule the notification
       await scheduleDailyReminder(reminderHour, reminderMinute);
       setDailyReminderEnabled(true);
     } else {
-      // Disabling - cancel notifications
       await cancelDailyReminder();
       setDailyReminderEnabled(false);
     }
@@ -83,7 +83,6 @@ export function SettingsScreen() {
       
       setReminderTime(hour, minute);
       
-      // Reschedule notification with new time
       if (dailyReminderEnabled) {
         await scheduleDailyReminder(hour, minute);
       }
@@ -97,13 +96,14 @@ export function SettingsScreen() {
     return `${displayHour}:${displayMinute} ${period}`;
   };
 
-  // Create a Date object for the time picker
   const timePickerDate = new Date();
   timePickerDate.setHours(reminderHour);
   timePickerDate.setMinutes(reminderMinute);
 
+  const styles = createStyles(colors);
+
   return (
-    <ScreenShell>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -113,22 +113,47 @@ export function SettingsScreen() {
           <Ionicons name="menu" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
-        <DisplayMd>Settings</DisplayMd>
+        <Text style={styles.title}>Settings</Text>
+      </View>
+
+      {/* Appearance Section */}
+      <Text style={styles.sectionLabel}>Appearance</Text>
+      <View style={styles.section}>
+        <View style={styles.themeRow}>
+          {THEME_OPTIONS.map((option, index) => (
+            <TouchableOpacity
+              key={option.value}
+              style={[
+                styles.themeOption,
+                mode === option.value && styles.themeOptionActive,
+                index < THEME_OPTIONS.length - 1 && styles.themeOptionBorder,
+              ]}
+              onPress={() => setMode(option.value)}
+            >
+              <Text style={[
+                styles.themeOptionText,
+                mode === option.value && styles.themeOptionTextActive,
+              ]}>
+                {option.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Notifications Section */}
-      <Caption color="muted" style={styles.sectionLabel}>Notifications</Caption>
+      <Text style={styles.sectionLabel}>Notifications</Text>
       <View style={styles.section}>
         <View style={styles.row}>
-          <BodyStrong>Daily reminder</BodyStrong>
+          <Text style={styles.rowLabel}>Daily reminder</Text>
           <Switch
             value={dailyReminderEnabled}
             onValueChange={handleToggleReminder}
             trackColor={{ 
-              false: colors.border.subtle, 
-              true: colors.brand.primarySoft 
+              false: colors.border, 
+              true: colors.accentSoft 
             }}
-            thumbColor={dailyReminderEnabled ? colors.brand.primary : '#f4f3f4'}
+            thumbColor={dailyReminderEnabled ? colors.accent : '#f4f3f4'}
           />
         </View>
         
@@ -137,9 +162,9 @@ export function SettingsScreen() {
             style={[styles.row, styles.rowBorder]}
             onPress={handleTimePress}
           >
-            <BodyStrong>Reminder time</BodyStrong>
+            <Text style={styles.rowLabel}>Reminder time</Text>
             <View style={styles.timeRow}>
-              <Body color="secondary">{formatTime(reminderHour, reminderMinute)}</Body>
+              <Text style={styles.rowValue}>{formatTime(reminderHour, reminderMinute)}</Text>
               <Ionicons 
                 name="chevron-forward" 
                 size={16} 
@@ -161,20 +186,36 @@ export function SettingsScreen() {
           onChange={handleTimeChange}
         />
       )}
-    </ScreenShell>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.surface,
+    paddingHorizontal: spacing.xl,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: spacing['2xl'],
+    paddingTop: spacing.md,
   },
   menuButton: {
     marginRight: spacing.lg,
   },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
   sectionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: spacing.sm,
     marginLeft: spacing.xs,
   },
@@ -193,7 +234,16 @@ const styles = StyleSheet.create({
   },
   rowBorder: {
     borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
+    borderTopColor: colors.border,
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.text.primary,
+  },
+  rowValue: {
+    fontSize: 16,
+    color: colors.text.secondary,
   },
   timeRow: {
     flexDirection: 'row',
@@ -201,5 +251,29 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: spacing.xs,
+  },
+  themeRow: {
+    flexDirection: 'row',
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: spacing.lg,
+    alignItems: 'center',
+  },
+  themeOptionActive: {
+    backgroundColor: colors.accentSoft,
+  },
+  themeOptionBorder: {
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
+  },
+  themeOptionText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.text.secondary,
+  },
+  themeOptionTextActive: {
+    color: colors.accent,
+    fontWeight: '600',
   },
 });
