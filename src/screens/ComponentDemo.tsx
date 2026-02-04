@@ -287,23 +287,32 @@ export function ComponentDemo() {
           <Text style={[styles.completedTitle, { color: colors.text.primary }]}>
             You're all set
           </Text>
-          
-          {/* Animated Streak */}
-          <View style={styles.streakRow}>
-            <RollingCounter
-              value={streakValue}
-              height={28}
-              width={18}
-              fontSize={22}
-              color={colors.text.secondary}
-            />
-            <Text style={[styles.streakLabel, { color: colors.text.secondary }]}>
-              {' '}days
-            </Text>
-          </View>
 
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          
+          {/* Streak acknowledgment */}
+          <Text style={[styles.streakIntro, { color: colors.text.muted }]}>
+            You've prayed
+          </Text>
+          <View style={styles.streakRow}>
+            <RollingCounter
+              value={streakValue}
+              height={44}
+              width={28}
+              fontSize={36}
+              color={colors.text.primary}
+            />
+            <Text style={[styles.streakDays, { color: colors.text.primary }]}>
+              {' '}days
+            </Text>
+          </View>
+          <Text style={[styles.streakOutro, { color: colors.text.muted }]}>
+            in a row
+          </Text>
+
+          {/* Spacer */}
+          <View style={{ height: 32 }} />
 
           {/* Actions */}
           <Pressable style={styles.completedAction} onPress={resetDemo}>
@@ -645,13 +654,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
+  streakIntro: {
+    fontSize: 15,
+    marginBottom: 4,
+  },
   streakRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 40,
   },
-  streakLabel: {
-    fontSize: 17,
+  streakDays: {
+    fontSize: 28,
+    fontWeight: '300',
+  },
+  streakOutro: {
+    fontSize: 15,
+    marginTop: 4,
   },
   divider: {
     width: 48,
