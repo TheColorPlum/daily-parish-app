@@ -211,64 +211,49 @@ export function ComponentDemo() {
   };
 
   // ============================================
-  // READING MODAL
-  // ============================================
-  const ReadingModal = () => (
-    <Modal
-      visible={showReading}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={() => setShowReading(false)}
-    >
-      <View style={[styles.modalContainer, { backgroundColor: colors.bg.surface }]}>
-        {/* Modal Header */}
-        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-          <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
-            Today's Reading
-          </Text>
-          <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.text.secondary} />
-          </Pressable>
-        </View>
-
-        <ScrollView 
-          style={styles.modalScroll}
-          contentContainerStyle={styles.modalContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Scripture */}
-          <Text style={[styles.scriptureRef, { color: colors.text.muted }]}>
-            {SCRIPTURE.reference}
-          </Text>
-          <Text style={[styles.scriptureText, { color: colors.text.scripture }]}>
-            {SCRIPTURE.text}
-          </Text>
-
-          {/* Divider */}
-          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
-
-          {/* Commentary */}
-          <Text style={[styles.commentaryLabel, { color: colors.text.muted }]}>
-            Commentary
-          </Text>
-          <Text style={[styles.commentaryText, { color: colors.text.primary }]}>
-            {SCRIPTURE.commentary}
-          </Text>
-
-          {/* Bottom spacing */}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-
-  // ============================================
   // COMPLETED STATE
   // ============================================
   if (isCompleted) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg.surface }]}>
-        <ReadingModal />
+        {/* Reading Modal - Inline */}
+        <Modal
+          visible={showReading}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowReading(false)}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: colors.bg.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+                Today's Reading
+              </Text>
+              <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </Pressable>
+            </View>
+            <ScrollView 
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={[styles.scriptureRef, { color: colors.text.muted }]}>
+                {SCRIPTURE.reference}
+              </Text>
+              <Text style={[styles.scriptureText, { color: colors.text.scripture }]}>
+                {SCRIPTURE.text}
+              </Text>
+              <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+              <Text style={[styles.commentaryLabel, { color: colors.text.muted }]}>
+                Commentary
+              </Text>
+              <Text style={[styles.commentaryText, { color: colors.text.primary }]}>
+                {SCRIPTURE.commentary}
+              </Text>
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </Modal>
         
         {/* Header */}
         <View style={styles.header}>
@@ -348,7 +333,44 @@ export function ComponentDemo() {
   // ============================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg.surface }]}>
-      <ReadingModal />
+      {/* Reading Modal - Inline */}
+      <Modal
+        visible={showReading}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReading(false)}
+      >
+        <View style={[styles.modalContainer, { backgroundColor: colors.bg.surface }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+              Today's Reading
+            </Text>
+            <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={colors.text.secondary} />
+            </Pressable>
+          </View>
+          <ScrollView 
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={[styles.scriptureRef, { color: colors.text.muted }]}>
+              {SCRIPTURE.reference}
+            </Text>
+            <Text style={[styles.scriptureText, { color: colors.text.scripture }]}>
+              {SCRIPTURE.text}
+            </Text>
+            <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.commentaryLabel, { color: colors.text.muted }]}>
+              Commentary
+            </Text>
+            <Text style={[styles.commentaryText, { color: colors.text.primary }]}>
+              {SCRIPTURE.commentary}
+            </Text>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Header */}
       <View style={styles.header}>
