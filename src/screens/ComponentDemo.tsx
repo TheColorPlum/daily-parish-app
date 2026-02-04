@@ -285,7 +285,7 @@ export function ComponentDemo() {
 
           {/* Message */}
           <Text style={[styles.completedTitle, { color: colors.text.primary }]}>
-            You're all set
+            Go in peace
           </Text>
 
           {/* Divider */}
