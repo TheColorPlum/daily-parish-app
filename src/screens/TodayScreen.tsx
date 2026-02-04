@@ -245,7 +245,15 @@ export function TodayScreen() {
   }, [sessionId, isCompletingSession, getToken, hasCompletedFirstSession]);
 
   function handlePlayPause() {
-    console.log('[TodayScreen] Play pressed:', { isLoaded: audioPlayer.isLoaded, isPlaying: audioPlayer.isPlaying, error: audioPlayer.error });
+    console.log('[TodayScreen] Play pressed:', { audioUrl, isLoaded: audioPlayer.isLoaded, isPlaying: audioPlayer.isPlaying, error: audioPlayer.error });
+    
+    // If no audio URL, open reading modal instead
+    if (!audioUrl) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setShowReading(true);
+      return;
+    }
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     audioPlayer.togglePlayback();
     
@@ -507,44 +515,52 @@ export function TodayScreen() {
         <View style={styles.playerSection}>
           <Pressable 
             onPress={handlePlayPause}
-            style={[styles.playButton, !audioPlayer.isLoaded && { opacity: 0.7 }]}
+            style={[styles.playButton, !audioUrl && styles.readButton]}
           >
             {audioPlayer.isBuffering ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
+            ) : audioUrl ? (
               <Ionicons 
                 name={audioPlayer.isPlaying ? "pause" : "play"} 
                 size={44} 
                 color="#FFFFFF" 
                 style={!audioPlayer.isPlaying ? { marginLeft: 4 } : {}}
               />
+            ) : (
+              <Ionicons name="book-outline" size={40} color="#FFFFFF" />
             )}
           </Pressable>
 
           <Text style={styles.prayerTitle}>Today's Prayer</Text>
           <Text style={styles.duration}>
-            {audioPlayer.isPlaying 
-              ? `${getFormattedRemaining()} remaining`
-              : audioPlayer.formattedDuration || '~5 min'
+            {!audioUrl 
+              ? 'Tap to read'
+              : audioPlayer.isPlaying 
+                ? `${getFormattedRemaining()} remaining`
+                : audioPlayer.formattedDuration || '~5 min'
             }
           </Text>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressSection}>
-          <GestureDetector gesture={combinedGesture}>
-            <View style={styles.progressTouchArea}>
-              <View style={styles.progressTrack}>
-                <Animated.View style={[styles.progressFill, progressStyle]} />
-                <Animated.View style={[styles.progressKnob, knobStyle]} />
+        {/* Progress Bar - only show if audio available */}
+        {audioUrl ? (
+          <View style={styles.progressSection}>
+            <GestureDetector gesture={combinedGesture}>
+              <View style={styles.progressTouchArea}>
+                <View style={styles.progressTrack}>
+                  <Animated.View style={[styles.progressFill, progressStyle]} />
+                  <Animated.View style={[styles.progressKnob, knobStyle]} />
+                </View>
               </View>
+            </GestureDetector>
+            <View style={styles.progressTimes}>
+              <Text style={styles.progressTime}>{audioPlayer.formattedPosition || '0:00'}</Text>
+              <Text style={styles.progressTime}>{audioPlayer.formattedDuration || '0:00'}</Text>
             </View>
-          </GestureDetector>
-          <View style={styles.progressTimes}>
-            <Text style={styles.progressTime}>{audioPlayer.formattedPosition || '0:00'}</Text>
-            <Text style={styles.progressTime}>{audioPlayer.formattedDuration || '0:00'}</Text>
           </View>
-        </View>
+        ) : (
+          <View style={styles.noAudioSpacer} />
+        )}
 
         {/* Scripture Teaser */}
         <View style={styles.teaserSection}>
@@ -561,6 +577,19 @@ export function TodayScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.accent} />
           </Pressable>
         </View>
+
+        {/* Mark Complete button - for read-only mode */}
+        {!audioUrl && screenState !== 'completed' && (
+          <Pressable 
+            style={styles.markCompleteButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              completeSession();
+            }}
+          >
+            <Text style={styles.markCompleteText}>Mark as complete</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -628,6 +657,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
     ...shadow.medium,
+  },
+  readButton: {
+    // Same as playButton but could customize if needed
+  },
+  noAudioSpacer: {
+    height: 60,
+    marginBottom: 40,
   },
   prayerTitle: {
     fontSize: 20,
@@ -699,6 +735,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: colors.accent,
+  },
+  markCompleteButton: {
+    marginTop: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+  },
+  markCompleteText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 
   // Completed State
