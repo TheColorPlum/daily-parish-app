@@ -1,17 +1,9 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  ScreenShell, 
-  Card, 
-  DisplayMd, 
-  Body,
-  Caption,
-  ScriptureHeading,
-  ScriptureBody,
-} from '../components';
-import { colors, spacing } from '../theme';
+import { lightColors as colors, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type HistoryDetailRouteProp = RouteProp<RootStackParamList, 'HistoryDetail'>;
@@ -31,7 +23,7 @@ export function HistoryDetailScreen() {
   };
 
   return (
-    <ScreenShell>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -41,59 +33,97 @@ export function HistoryDetailScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
-        <DisplayMd>{formatDate(item.date)}</DisplayMd>
+        <Text style={styles.title}>{formatDate(item.date)}</Text>
       </View>
 
-      {/* First Reading */}
-      <Card style={styles.section}>
-        <ScriptureHeading style={styles.reference}>
-          {item.first_reading.reference}
-        </ScriptureHeading>
-        <View style={styles.divider} />
-        <ScriptureBody>{item.first_reading.text}</ScriptureBody>
-      </Card>
+      <ScrollView 
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* First Reading */}
+        <Text style={styles.scriptureRef}>{item.first_reading.reference}</Text>
+        <Text style={styles.scriptureText}>{item.first_reading.text}</Text>
 
-      {/* Gospel */}
-      <Card style={styles.section}>
-        <ScriptureHeading style={styles.reference}>
-          {item.gospel.reference}
-        </ScriptureHeading>
         <View style={styles.divider} />
-        <ScriptureBody>{item.gospel.text}</ScriptureBody>
-      </Card>
 
-      {/* Commentary */}
-      <Card variant="alt" style={styles.section}>
-        <Caption color="muted" style={styles.commentaryLabel}>
-          Commentary
-        </Caption>
-        <Body>{item.commentary_unified}</Body>
-      </Card>
-    </ScreenShell>
+        {/* Gospel */}
+        <Text style={styles.scriptureRef}>{item.gospel.reference}</Text>
+        <Text style={styles.scriptureText}>{item.gospel.text}</Text>
+
+        <View style={styles.divider} />
+
+        {/* Commentary */}
+        <Text style={styles.commentaryLabel}>Commentary</Text>
+        <Text style={styles.commentaryText}>{item.commentary_unified}</Text>
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.surface,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing['2xl'],
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   backButton: {
-    marginRight: spacing.lg,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  section: {
-    marginBottom: spacing['2xl'],
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
-  reference: {
-    marginBottom: spacing.sm,
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: 24,
+  },
+  scriptureRef: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    marginBottom: 16,
+  },
+  scriptureText: {
+    fontSize: 22,
+    fontFamily: 'Georgia',
+    fontStyle: 'italic',
+    lineHeight: 34,
+    color: colors.text.scripture,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.border.subtle,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.border,
+    marginVertical: 32,
   },
   commentaryLabel: {
-    marginBottom: spacing.sm,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    marginBottom: 16,
+  },
+  commentaryText: {
+    fontSize: 17,
+    lineHeight: 28,
+    color: colors.text.primary,
   },
 });
