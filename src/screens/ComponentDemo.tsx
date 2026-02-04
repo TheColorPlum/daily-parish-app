@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 // Reacticx Components
 import { CircularProgress } from '../shared/ui/organisms/circular-progress';
 import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
-import { GooeySwitch } from '../shared/ui/micro-interactions/gooey-switch';
+// GooeySwitch requires dev build (Skia + Worklets) - using native Switch for now
 
 // Daily Parish Design Tokens
 const colors = {
@@ -116,9 +116,10 @@ export function ComponentDemo() {
           </View>
         </View>
 
-        {/* Gooey Switches */}
+        {/* Settings Switches */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
+          <Text style={styles.sectionDesc}>Native switches with Daily Parish colors</Text>
           
           <View style={styles.settingRow}>
             <View style={styles.settingTextContainer}>
@@ -127,13 +128,11 @@ export function ComponentDemo() {
                 {notificationsEnabled ? 'On at 7:00 AM' : 'Disabled'}
               </Text>
             </View>
-            <GooeySwitch
-              active={notificationsEnabled}
-              onToggle={setNotificationsEnabled}
-              size={70}
-              activeColor={colors.brand.primary}
-              inactiveColor={colors.text.muted}
-              trackColor={colors.border.subtle}
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: colors.border.subtle, true: colors.brand.primarySoft }}
+              thumbColor={notificationsEnabled ? colors.brand.primary : '#f4f3f4'}
             />
           </View>
 
@@ -144,13 +143,11 @@ export function ComponentDemo() {
                 {darkMode ? 'Easier on the eyes' : 'Light theme'}
               </Text>
             </View>
-            <GooeySwitch
-              active={darkMode}
-              onToggle={setDarkMode}
-              size={70}
-              activeColor={colors.text.primary}
-              inactiveColor={colors.text.muted}
-              trackColor={colors.border.subtle}
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+              trackColor={{ false: colors.border.subtle, true: colors.brand.primarySoft }}
+              thumbColor={darkMode ? colors.brand.primary : '#f4f3f4'}
             />
           </View>
         </View>
