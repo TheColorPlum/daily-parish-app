@@ -150,6 +150,10 @@ export function ComponentDemo() {
     width: `${progress.value}%`,
   }));
 
+  const knobStyle = useAnimatedStyle(() => ({
+    left: `${progress.value}%`,
+  }));
+
   // Scrubbing gesture
   const scrubGesture = Gesture.Pan()
     .onStart(() => {
@@ -398,9 +402,7 @@ export function ComponentDemo() {
                   style={[
                     styles.progressKnob, 
                     { backgroundColor: colors.accent },
-                    useAnimatedStyle(() => ({
-                      left: `${progress.value}%`,
-                    }))
+                    knobStyle,
                   ]} 
                 />
               </View>
