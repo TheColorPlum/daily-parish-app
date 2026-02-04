@@ -142,7 +142,8 @@ export function TodayScreen() {
 
   // Load audio when URL is available
   useEffect(() => {
-    if (audioUrl && screenState === 'ready') {
+    console.log('[TodayScreen] Audio state:', { audioUrl, screenState, isLoaded: audioPlayer.isLoaded });
+    if (audioUrl && (screenState === 'ready' || screenState === 'playing')) {
       audioPlayer.loadAudio(audioUrl);
     }
   }, [audioUrl, screenState]);
@@ -242,6 +243,7 @@ export function TodayScreen() {
   }, [sessionId, isCompletingSession, getToken, hasCompletedFirstSession]);
 
   function handlePlayPause() {
+    console.log('[TodayScreen] Play pressed:', { isLoaded: audioPlayer.isLoaded, isPlaying: audioPlayer.isPlaying, error: audioPlayer.error });
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     audioPlayer.togglePlayback();
     
@@ -503,8 +505,7 @@ export function TodayScreen() {
         <View style={styles.playerSection}>
           <Pressable 
             onPress={handlePlayPause}
-            style={styles.playButton}
-            disabled={!audioPlayer.isLoaded && !audioPlayer.error}
+            style={[styles.playButton, !audioPlayer.isLoaded && { opacity: 0.7 }]}
           >
             {audioPlayer.isBuffering ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
