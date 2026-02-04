@@ -18,15 +18,17 @@ interface Reading {
 interface ReadingsData {
   date: string;
   first_reading: Reading;
+  responsorial_psalm: string | null;
   gospel: Reading;
   commentary: string;
-  audioUrl: string;
+  audioUrl: string | null;
 }
 
 interface TodayState {
   // Data
   date: string | null;
   firstReading: Reading | null;
+  responsorialPsalm: string | null;
   gospel: Reading | null;
   commentary: string | null;
   audioUrl: string | null;
@@ -49,6 +51,7 @@ interface TodayState {
 const initialState = {
   date: null,
   firstReading: null,
+  responsorialPsalm: null,
   gospel: null,
   commentary: null,
   audioUrl: null,
@@ -65,6 +68,7 @@ export const useTodayStore = create<TodayState>()(
       setReadings: (data) => set({
         date: data.date,
         firstReading: data.first_reading,
+        responsorialPsalm: data.responsorial_psalm,
         gospel: data.gospel,
         commentary: data.commentary,
         audioUrl: data.audioUrl,

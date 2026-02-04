@@ -4,6 +4,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, spacing } from '../theme';
+import { formatReference } from '../lib';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 
 type HistoryDetailRouteProp = RouteProp<RootStackParamList, 'HistoryDetail'>;
@@ -45,13 +46,13 @@ export function HistoryDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* First Reading */}
-        <Text style={styles.scriptureRef}>{item.first_reading.reference}</Text>
+        <Text style={styles.scriptureRef}>{formatReference(item.first_reading.reference)}</Text>
         <Text style={styles.scriptureText}>{item.first_reading.text}</Text>
 
         <View style={styles.divider} />
 
         {/* Gospel */}
-        <Text style={styles.scriptureRef}>{item.gospel.reference}</Text>
+        <Text style={styles.scriptureRef}>{formatReference(item.gospel.reference)}</Text>
         <Text style={styles.scriptureText}>{item.gospel.text}</Text>
 
         <View style={styles.divider} />

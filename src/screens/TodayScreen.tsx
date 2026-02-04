@@ -27,7 +27,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { useTodayStore, useUserStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
-import { api, ApiError } from '../lib';
+import { api, ApiError, formatReference } from '../lib';
 import { useTheme, spacing, radius, shadow } from '../theme';
 import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 
@@ -44,7 +44,8 @@ export function TodayScreen() {
   // Stores
   const { 
     date, 
-    firstReading, 
+    firstReading,
+    responsorialPsalm,
     gospel, 
     commentary,
     audioUrl,
@@ -177,6 +178,7 @@ export function TodayScreen() {
       setReadings({
         date: readings.date,
         first_reading: readings.first_reading,
+        responsorial_psalm: readings.responsorial_psalm,
         gospel: readings.gospel,
         commentary: readings.commentary_unified,
         audioUrl: readings.audio_unified_url,
@@ -359,14 +361,21 @@ export function TodayScreen() {
             >
               {firstReading && (
                 <>
-                  <Text style={styles.scriptureRef}>{firstReading.reference}</Text>
+                  <Text style={styles.scriptureRef}>{formatReference(firstReading.reference)}</Text>
                   <Text style={styles.scriptureText}>{firstReading.text}</Text>
+                </>
+              )}
+              {responsorialPsalm && (
+                <>
+                  <View style={styles.modalDivider} />
+                  <Text style={styles.psalmLabel}>Responsorial Psalm</Text>
+                  <Text style={styles.psalmText}>{formatReference(responsorialPsalm)}</Text>
                 </>
               )}
               {gospel && (
                 <>
                   <View style={styles.modalDivider} />
-                  <Text style={styles.scriptureRef}>{gospel.reference}</Text>
+                  <Text style={styles.scriptureRef}>{formatReference(gospel.reference)}</Text>
                   <Text style={styles.scriptureText}>{gospel.text}</Text>
                 </>
               )}
@@ -475,14 +484,21 @@ export function TodayScreen() {
           >
             {firstReading && (
               <>
-                <Text style={styles.scriptureRef}>{firstReading.reference}</Text>
+                <Text style={styles.scriptureRef}>{formatReference(firstReading.reference)}</Text>
                 <Text style={styles.scriptureText}>{firstReading.text}</Text>
+              </>
+            )}
+            {responsorialPsalm && (
+              <>
+                <View style={styles.modalDivider} />
+                <Text style={styles.psalmLabel}>Responsorial Psalm</Text>
+                <Text style={styles.psalmText}>{formatReference(responsorialPsalm)}</Text>
               </>
             )}
             {gospel && (
               <>
                 <View style={styles.modalDivider} />
-                <Text style={styles.scriptureRef}>{gospel.reference}</Text>
+                <Text style={styles.scriptureRef}>{formatReference(gospel.reference)}</Text>
                 <Text style={styles.scriptureText}>{gospel.text}</Text>
               </>
             )}
@@ -856,6 +872,20 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     fontStyle: 'italic',
     lineHeight: 34,
     color: colors.text.scripture,
+  },
+  psalmLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    marginBottom: 8,
+  },
+  psalmText: {
+    fontSize: 18,
+    fontFamily: 'Georgia',
+    lineHeight: 28,
+    color: colors.text.primary,
   },
   modalDivider: {
     height: 1,
