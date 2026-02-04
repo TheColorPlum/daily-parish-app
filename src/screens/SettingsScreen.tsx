@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../navigation/AppNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -26,7 +28,7 @@ import { colors, spacing, radius } from '../theme';
 const APP_VERSION = '1.0.0';
 
 export function SettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const { signOut, getToken } = useAuth();
   const { user } = useUser();
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -238,6 +240,26 @@ export function SettingsScreen() {
           onChange={handleTimeChange}
         />
       )}
+
+      {/* Developer Section */}
+      <Caption color="muted" style={styles.sectionLabel}>Developer</Caption>
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={styles.row}
+          onPress={() => navigation.navigate('ComponentDemo')}
+        >
+          <BodyStrong>Component Demo</BodyStrong>
+          <View style={styles.timeRow}>
+            <Body color="secondary">Reacticx UI</Body>
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color={colors.text.muted} 
+              style={styles.chevron}
+            />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Actions Section */}
       <View style={styles.actions}>

@@ -8,6 +8,7 @@ import {
   HistoryScreen,
   HistoryDetailScreen,
   SettingsScreen,
+  ComponentDemo,
 } from '../screens';
 import { useUserLoader } from '../hooks';
 import { colors } from '../theme';
@@ -23,6 +24,7 @@ export type MainStackParamList = {
   History: undefined;
   HistoryDetail: { item: HistoryItem };
   Settings: undefined;
+  ComponentDemo: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -57,6 +59,7 @@ function MainNavigator() {
       <MainStack.Screen name="History" component={HistoryScreen} />
       <MainStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
       <MainStack.Screen name="Settings" component={SettingsScreen} />
+      <MainStack.Screen name="ComponentDemo" component={ComponentDemo} />
     </MainStack.Navigator>
   );
 }
