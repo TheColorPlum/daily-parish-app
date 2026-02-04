@@ -1,20 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
-import { 
-  ScreenShell, 
-  Card, 
-  DisplayMd, 
-  Body,
-  BodyStrong,
-  Caption,
-  Button,
-} from '../components';
+import { MonthCalendar } from '../components/MonthCalendar';
 import { api } from '../lib';
-import { colors, spacing } from '../theme';
+import { lightColors as colors, spacing } from '../theme';
 import type { HistoryItem } from '../types';
 import type { DrawerParamList } from '../navigation/AppNavigator';
 
@@ -25,20 +18,15 @@ export function HistoryScreen() {
   const { getToken } = useAuth();
   const [sessions, setSessions] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadHistory();
   }, []);
 
-  const loadHistory = async (isRefresh = false) => {
+  const loadHistory = async () => {
     try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      setLoading(true);
       setError(null);
       
       const token = await getToken();
@@ -51,63 +39,31 @@ export function HistoryScreen() {
       console.error('History error:', err);
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const d = new Date(dateString + 'T12:00:00');
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+  // Build set of completed dates and map for lookup
+  const { completedDates, sessionsByDate } = useMemo(() => {
+    const dates = new Set<string>();
+    const byDate = new Map<string, HistoryItem>();
+    
+    for (const session of sessions) {
+      dates.add(session.date);
+      byDate.set(session.date, session);
+    }
+    
+    return { completedDates: dates, sessionsByDate: byDate };
+  }, [sessions]);
+
+  const handleDayPress = (date: string) => {
+    const session = sessionsByDate.get(date);
+    if (session) {
+      (navigation as any).navigate('HistoryDetail', { item: session });
+    }
   };
-
-  const handleItemPress = (item: HistoryItem) => {
-    // Navigate to HistoryDetail which is on the RootStack
-    (navigation as any).navigate('HistoryDetail', { item });
-  };
-
-  const renderItem = ({ item }: { item: HistoryItem }) => (
-    <TouchableOpacity onPress={() => handleItemPress(item)} activeOpacity={0.7}>
-      <Card style={styles.historyItem}>
-        <View style={styles.itemHeader}>
-          <BodyStrong>{formatDate(item.date)}</BodyStrong>
-          <View style={styles.itemRight}>
-            <Ionicons 
-              name="checkmark-circle" 
-              size={18} 
-              color={colors.brand.primary} 
-              style={styles.checkIcon}
-            />
-            <Ionicons 
-              name="chevron-forward" 
-              size={18} 
-              color={colors.text.muted} 
-            />
-          </View>
-        </View>
-        <Caption color="secondary" style={styles.reference}>
-          {item.first_reading.reference}
-        </Caption>
-        <Caption color="secondary">
-          {item.gospel.reference}
-        </Caption>
-      </Card>
-    </TouchableOpacity>
-  );
-
-  const renderEmpty = () => (
-    <View style={styles.empty}>
-      <Body color="secondary" style={styles.emptyText}>
-        Your prayer history will appear here after your first session.
-      </Body>
-    </View>
-  );
 
   return (
-    <ScreenShell scrollable={false}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -117,96 +73,129 @@ export function HistoryScreen() {
           <Ionicons name="menu" size={24} color={colors.text.primary} />
         </TouchableOpacity>
         
-        <DisplayMd>History</DisplayMd>
+        <Text style={styles.title}>History</Text>
+        
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* Error state */}
-      {error && !loading && (
-        <View style={styles.errorContainer}>
-          <Body color="secondary">{error}</Body>
-          <Button
-            title="Try again"
-            variant="ghost"
-            onPress={() => loadHistory()}
-          />
+      {/* Loading state */}
+      {loading && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.loadingText}>Loading history...</Text>
         </View>
       )}
 
-      {/* History List */}
-      {!error && (
-        <FlatList
-          data={sessions}
-          keyExtractor={(item) => item.date}
-          renderItem={renderItem}
-          ListEmptyComponent={!loading ? renderEmpty : null}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadHistory(true)}
-              tintColor={colors.brand.primary}
-            />
-          }
-        />
+      {/* Error state */}
+      {!loading && error && (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadHistory}>
+            <Text style={styles.retryText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
-      {/* Loading state */}
-      {loading && sessions.length === 0 && (
-        <Body color="secondary" style={styles.loading}>
-          Loading history...
-        </Body>
+      {/* Calendar */}
+      {!loading && !error && (
+        <View style={styles.calendarContainer}>
+          <MonthCalendar
+            completedDates={completedDates}
+            onDayPress={handleDayPress}
+          />
+          
+          {sessions.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>
+                Your prayer history will appear here after your first session.
+              </Text>
+            </View>
+          )}
+          
+          {sessions.length > 0 && (
+            <View style={styles.stats}>
+              <Text style={styles.statsText}>
+                {sessions.length} {sessions.length === 1 ? 'day' : 'days'} of prayer
+              </Text>
+            </View>
+          )}
+        </View>
       )}
-    </ScreenShell>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.surface,
+  },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing['2xl'],
-  },
-  menuButton: {
-    marginRight: spacing.lg,
-  },
-  list: {
-    paddingBottom: spacing['2xl'],
-    flexGrow: 1,
-  },
-  historyItem: {
-    marginBottom: spacing.sm,
-  },
-  itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
-  itemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  menuButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  checkIcon: {
-    marginRight: spacing.xs,
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
-  reference: {
-    marginTop: spacing.xs,
-  },
-  empty: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
+  },
+  loadingText: {
+    fontSize: 15,
+    color: colors.text.muted,
+    marginTop: spacing.lg,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  retryText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.accent,
+  },
+  calendarContainer: {
+    flex: 1,
+    paddingTop: spacing.lg,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
   },
   emptyText: {
+    fontSize: 16,
+    color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 24,
   },
-  loading: {
-    textAlign: 'center',
-    marginTop: spacing['3xl'],
-  },
-  errorContainer: {
+  stats: {
     alignItems: 'center',
-    marginTop: spacing['3xl'],
+    paddingVertical: spacing['2xl'],
+  },
+  statsText: {
+    fontSize: 15,
+    color: colors.text.muted,
   },
 });
