@@ -69,7 +69,7 @@ export function ComponentDemo() {
   const incrementProgress = () => {
     const newValue = progressValue >= 100 ? 0 : Math.min(progressValue + 20, 100);
     setProgressValue(newValue);
-    readingProgress.value = withSpring(newValue, { damping: 15 });
+    readingProgress.value = withTiming(newValue, { duration: 600 });
   };
 
   const incrementStreak = () => {
