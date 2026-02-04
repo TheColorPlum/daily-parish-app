@@ -222,25 +222,33 @@ export function TodayScreen() {
       const result = await api.completeSession(token, sessionId);
       
       if (result.success) {
+        const newStreak = result.streak.current_streak;
+        
         setStreak({
-          current_streak: result.streak.current_streak,
+          current_streak: newStreak,
           longest_streak: result.streak.longest_streak,
-          total_sessions: result.streak.current_streak,
+          total_sessions: newStreak,
         });
         
-        if (!hasCompletedFirstSession) {
+        const isFirstCompletion = !hasCompletedFirstSession;
+        if (isFirstCompletion) {
           setHasCompletedFirstSession(true);
+          // For first completion, show new streak immediately (no animation from 0)
+          setDisplayStreak(newStreak);
+          streakValue.value = newStreak;
         }
         
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setScreenState('completed');
 
-        // Delayed streak animation
-        setTimeout(() => {
-          setDisplayStreak(result.streak.current_streak);
-          streakValue.value = result.streak.current_streak;
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }, 800);
+        // Delayed streak animation (only if not first completion)
+        if (!isFirstCompletion) {
+          setTimeout(() => {
+            setDisplayStreak(newStreak);
+            streakValue.value = newStreak;
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }, 800);
+        }
       }
     } catch (error) {
       console.error('Failed to complete session:', error);
