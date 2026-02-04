@@ -1,20 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Switch, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Pressable, 
+  Switch, 
+  Dimensions,
+  Modal,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
   withTiming,
+  withSpring,
   FadeIn,
-  FadeOut,
+  runOnJS,
 } from 'react-native-reanimated';
+import { 
+  Gesture, 
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+
+// Reacticx Components
+import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ============================================
-// DESIGN TOKENS — Contemplative Premium
+// DESIGN TOKENS
 // ============================================
 
 const lightColors = {
@@ -27,6 +46,7 @@ const lightColors = {
     primary: '#1C1C1E',
     secondary: '#48484A',
     muted: '#8E8E93',
+    scripture: '#2C2C2E',
   },
   accent: '#3D5A47',
   accentSoft: 'rgba(61, 90, 71, 0.08)',
@@ -43,6 +63,7 @@ const darkColors = {
     primary: '#F5F5F7',
     secondary: '#A1A1A6',
     muted: '#636366',
+    scripture: '#E5E5EA',
   },
   accent: '#D4A84B',
   accentSoft: 'rgba(212, 168, 75, 0.12)',
@@ -50,7 +71,23 @@ const darkColors = {
 };
 
 // ============================================
-// AUDIO-FIRST TODAY SCREEN PROTOTYPE
+// SCRIPTURE CONTENT
+// ============================================
+
+const SCRIPTURE = {
+  reference: 'Philippians 4:6-7',
+  text: `Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus.`,
+  commentary: `Paul wrote these words from prison — not from comfort, but from chains. His peace wasn't circumstantial; it was rooted in something deeper.
+
+The invitation here isn't to stop feeling anxious through willpower. It's to bring that anxiety somewhere — to prayer, to petition, to thanksgiving. Notice how thanksgiving comes before the request. Gratitude reorients us before we even ask.
+
+And the promise isn't that God will fix everything. It's that peace will guard your heart. A peace that doesn't make sense given the circumstances. A peace that watches over you like a sentinel.
+
+Today, what anxiety are you carrying? What would it look like to bring it — not fix it, just bring it?`,
+};
+
+// ============================================
+// COMPONENT
 // ============================================
 
 export function ComponentDemo() {
@@ -62,9 +99,18 @@ export function ComponentDemo() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const totalTime = 272; // 4:32 in seconds
+  const [streak, setStreak] = useState(6); // Start at 6 so completion bumps to 7
+  const totalTime = 272; // 4:32
 
+  // Bottom sheet state
+  const [showReading, setShowReading] = useState(false);
+
+  // Animated values
   const progress = useSharedValue(0);
+  const streakValue = useSharedValue(6);
+
+  // Progress bar width for scrubbing
+  const progressBarWidth = SCREEN_WIDTH - 64; // 32px padding each side
 
   // Simulate playback
   useEffect(() => {
@@ -76,7 +122,7 @@ export function ComponentDemo() {
           progress.value = withTiming((next / totalTime) * 100, { duration: 900 });
           if (next >= totalTime) {
             setIsPlaying(false);
-            setIsCompleted(true);
+            handleCompletion();
           }
           return next;
         });
@@ -84,6 +130,15 @@ export function ComponentDemo() {
     }
     return () => clearInterval(interval);
   }, [isPlaying, currentTime]);
+
+  const handleCompletion = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsCompleted(true);
+    // Animate streak
+    const newStreak = streak + 1;
+    setStreak(newStreak);
+    streakValue.value = newStreak;
+  };
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -95,15 +150,35 @@ export function ComponentDemo() {
     width: `${progress.value}%`,
   }));
 
+  // Scrubbing gesture
+  const scrubGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(setIsPlaying)(false);
+    })
+    .onUpdate((event) => {
+      const newProgress = Math.max(0, Math.min(100, (event.x / progressBarWidth) * 100));
+      progress.value = newProgress;
+      const newTime = Math.floor((newProgress / 100) * totalTime);
+      runOnJS(setCurrentTime)(newTime);
+    })
+    .onEnd(() => {
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    });
+
+  const tapGesture = Gesture.Tap()
+    .onEnd((event) => {
+      const newProgress = Math.max(0, Math.min(100, (event.x / progressBarWidth) * 100));
+      progress.value = withTiming(newProgress, { duration: 200 });
+      const newTime = Math.floor((newProgress / 100) * totalTime);
+      runOnJS(setCurrentTime)(newTime);
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    });
+
+  const combinedGesture = Gesture.Race(scrubGesture, tapGesture);
+
   const handlePlayPause = () => {
-    if (isCompleted) {
-      // Reset for demo
-      setIsCompleted(false);
-      setCurrentTime(0);
-      progress.value = 0;
-    } else {
-      setIsPlaying(!isPlaying);
-    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsPlaying(!isPlaying);
   };
 
   const resetDemo = () => {
@@ -111,14 +186,68 @@ export function ComponentDemo() {
     setIsPlaying(false);
     setCurrentTime(0);
     progress.value = 0;
+    setStreak(6);
+    streakValue.value = 6;
   };
 
   const skipToEnd = () => {
     setCurrentTime(totalTime);
     progress.value = withTiming(100, { duration: 300 });
     setIsPlaying(false);
-    setIsCompleted(true);
+    setTimeout(() => handleCompletion(), 400);
   };
+
+  // ============================================
+  // READING MODAL
+  // ============================================
+  const ReadingModal = () => (
+    <Modal
+      visible={showReading}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => setShowReading(false)}
+    >
+      <View style={[styles.modalContainer, { backgroundColor: colors.bg.surface }]}>
+        {/* Modal Header */}
+        <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.modalTitle, { color: colors.text.primary }]}>
+            Today's Reading
+          </Text>
+          <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={colors.text.secondary} />
+          </Pressable>
+        </View>
+
+        <ScrollView 
+          style={styles.modalScroll}
+          contentContainerStyle={styles.modalContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Scripture */}
+          <Text style={[styles.scriptureRef, { color: colors.text.muted }]}>
+            {SCRIPTURE.reference}
+          </Text>
+          <Text style={[styles.scriptureText, { color: colors.text.scripture }]}>
+            {SCRIPTURE.text}
+          </Text>
+
+          {/* Divider */}
+          <View style={[styles.modalDivider, { backgroundColor: colors.border }]} />
+
+          {/* Commentary */}
+          <Text style={[styles.commentaryLabel, { color: colors.text.muted }]}>
+            Commentary
+          </Text>
+          <Text style={[styles.commentaryText, { color: colors.text.primary }]}>
+            {SCRIPTURE.commentary}
+          </Text>
+
+          {/* Bottom spacing */}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </Modal>
+  );
 
   // ============================================
   // COMPLETED STATE
@@ -126,6 +255,8 @@ export function ComponentDemo() {
   if (isCompleted) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bg.surface }]}>
+        <ReadingModal />
+        
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -156,10 +287,19 @@ export function ComponentDemo() {
             You're all set
           </Text>
           
-          {/* Streak - only shows here */}
-          <Text style={[styles.streakText, { color: colors.text.secondary }]}>
-            7 days
-          </Text>
+          {/* Animated Streak */}
+          <View style={styles.streakRow}>
+            <RollingCounter
+              value={streakValue}
+              height={28}
+              width={18}
+              fontSize={22}
+              color={colors.text.secondary}
+            />
+            <Text style={[styles.streakLabel, { color: colors.text.secondary }]}>
+              {' '}days
+            </Text>
+          </View>
 
           {/* Divider */}
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -172,7 +312,7 @@ export function ComponentDemo() {
             </Text>
           </Pressable>
 
-          <Pressable style={styles.completedAction}>
+          <Pressable style={styles.completedAction} onPress={() => setShowReading(true)}>
             <Ionicons name="document-text-outline" size={20} color={colors.text.secondary} />
             <Text style={[styles.completedActionText, { color: colors.text.secondary }]}>
               Read scripture
@@ -186,13 +326,6 @@ export function ComponentDemo() {
             </Text>
           </Pressable>
         </Animated.View>
-
-        {/* Demo label */}
-        <View style={styles.demoLabel}>
-          <Text style={[styles.demoLabelText, { color: colors.text.muted }]}>
-            Completed State
-          </Text>
-        </View>
       </SafeAreaView>
     );
   }
@@ -202,6 +335,8 @@ export function ComponentDemo() {
   // ============================================
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bg.surface }]}>
+      <ReadingModal />
+
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -246,17 +381,31 @@ export function ComponentDemo() {
             Today's Prayer
           </Text>
           <Text style={[styles.duration, { color: colors.text.muted }]}>
-            {formatTime(totalTime - currentTime)} remaining
+            {isPlaying ? formatTime(totalTime - currentTime) + ' remaining' : formatTime(totalTime)}
           </Text>
         </View>
 
-        {/* Progress Bar */}
+        {/* Scrubbable Progress Bar */}
         <View style={styles.progressSection}>
-          <View style={[styles.progressTrack, { backgroundColor: colors.bg.subtle }]}>
-            <Animated.View 
-              style={[styles.progressFill, { backgroundColor: colors.accent }, progressStyle]} 
-            />
-          </View>
+          <GestureDetector gesture={combinedGesture}>
+            <View style={styles.progressTouchArea}>
+              <View style={[styles.progressTrack, { backgroundColor: colors.bg.subtle }]}>
+                <Animated.View 
+                  style={[styles.progressFill, { backgroundColor: colors.accent }, progressStyle]} 
+                />
+                {/* Scrub knob */}
+                <Animated.View 
+                  style={[
+                    styles.progressKnob, 
+                    { backgroundColor: colors.accent },
+                    useAnimatedStyle(() => ({
+                      left: `${progress.value}%`,
+                    }))
+                  ]} 
+                />
+              </View>
+            </View>
+          </GestureDetector>
           <View style={styles.progressTimes}>
             <Text style={[styles.progressTime, { color: colors.text.muted }]}>
               {formatTime(currentTime)}
@@ -273,7 +422,13 @@ export function ComponentDemo() {
             "Do not be anxious about anything..."
           </Text>
           
-          <Pressable style={styles.seeFullReading}>
+          <Pressable 
+            style={styles.seeFullReading}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowReading(true);
+            }}
+          >
             <Text style={[styles.seeFullReadingText, { color: colors.accent }]}>
               See full reading
             </Text>
@@ -379,14 +534,31 @@ const styles = StyleSheet.create({
   progressSection: {
     marginBottom: 40,
   },
+  progressTouchArea: {
+    height: 24,
+    justifyContent: 'center',
+  },
   progressTrack: {
     height: 4,
     borderRadius: 2,
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   progressFill: {
     height: '100%',
     borderRadius: 2,
+  },
+  progressKnob: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    top: -6,
+    marginLeft: -8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   progressTimes: {
     flexDirection: 'row',
@@ -437,9 +609,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  streakText: {
-    fontSize: 17,
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     marginBottom: 40,
+  },
+  streakLabel: {
+    fontSize: 17,
   },
   divider: {
     width: 48,
@@ -456,6 +632,63 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
 
+  // Modal
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalContent: {
+    padding: 24,
+  },
+  scriptureRef: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  scriptureText: {
+    fontSize: 22,
+    fontFamily: 'Georgia',
+    fontStyle: 'italic',
+    lineHeight: 34,
+  },
+  modalDivider: {
+    height: 1,
+    marginVertical: 32,
+  },
+  commentaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+  },
+  commentaryText: {
+    fontSize: 17,
+    lineHeight: 28,
+  },
+
   // Demo Controls
   demoControls: {
     padding: 20,
@@ -468,17 +701,6 @@ const styles = StyleSheet.create({
   },
   demoButtonText: {
     fontSize: 15,
-    fontWeight: '500',
-  },
-  demoLabel: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  demoLabelText: {
-    fontSize: 13,
     fontWeight: '500',
   },
 });
