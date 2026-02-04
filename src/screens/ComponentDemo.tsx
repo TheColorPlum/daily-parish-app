@@ -10,29 +10,20 @@ import { CircularProgress } from '../shared/ui/organisms/circular-progress';
 import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 // GooeySwitch requires dev build (Skia + Worklets) - using native Switch for now
 
-// Daily Parish Design Tokens
+// Daily Parish Design Tokens — Refined Minimal Palette
 const colors = {
   bg: {
-    surface: '#FAF9F6',
-    surfaceAlt: '#F1EEE6',
+    surface: '#FAFAFA',
     elevated: '#FFFFFF',
   },
   text: {
-    primary: '#212121',
+    primary: '#1A1A1A',
     secondary: '#4A4A4A',
-    muted: '#777777',
+    muted: '#717171',
   },
-  brand: {
-    primary: '#2D5A3F',
-    primaryLight: '#3E7A56',
-    primarySoft: '#E4EFE8',
-  },
-  accent: {
-    gold: '#C89B3C',
-    goldSoft: '#F5EED9',
-  },
+  accent: '#2D5A3F', // Forest green — ONE accent only
   border: {
-    subtle: '#E2DED2',
+    subtle: '#E5E5E5',
   },
 };
 
@@ -78,17 +69,17 @@ export function ComponentDemo() {
 
         {/* Circular Progress */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reading Progress</Text>
-          <Text style={styles.sectionDesc}>Tap the circle to increase</Text>
+          <Text style={styles.sectionTitle}>Completion</Text>
+          <Text style={styles.sectionDesc}>Tap to increase</Text>
           
           <View style={styles.progressContainer}>
             <CircularProgress
               progress={readingProgress}
-              size={120}
-              strokeWidth={8}
+              size={100}
+              strokeWidth={6}
               outerCircleColor={colors.border.subtle}
-              progressCircleColor={colors.brand.primary}
-              backgroundColor={colors.brand.primarySoft}
+              progressCircleColor={colors.accent}
+              backgroundColor={colors.bg.elevated}
               onPress={incrementProgress}
               renderIcon={() => (
                 <Text style={styles.progressText}>{progressValue}%</Text>
@@ -99,19 +90,19 @@ export function ComponentDemo() {
 
         {/* Rolling Counter - Streak */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Day Streak</Text>
-          <Text style={styles.sectionDesc}>Tap the number to add a day</Text>
+          <Text style={styles.sectionTitle}>Consistency</Text>
+          <Text style={styles.sectionDesc}>Tap to add a day</Text>
           
           <View style={styles.streakContainer}>
-            <Pressable onPress={incrementStreak} style={styles.streakBadge}>
+            <Pressable onPress={incrementStreak} style={styles.streakRow}>
               <RollingCounter
                 value={streakCount}
-                height={48}
-                width={32}
-                fontSize={36}
-                color={colors.accent.gold}
+                height={40}
+                width={28}
+                fontSize={32}
+                color={colors.text.primary}
               />
-              <Text style={styles.streakLabel}>days 🔥</Text>
+              <Text style={styles.streakLabel}>days</Text>
             </Pressable>
           </View>
         </View>
@@ -119,60 +110,61 @@ export function ComponentDemo() {
         {/* Settings Switches */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
-          <Text style={styles.sectionDesc}>Native switches with Daily Parish colors</Text>
           
           <View style={styles.settingRow}>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingLabel}>Daily Reminders</Text>
-              <Text style={styles.settingDesc}>
-                {notificationsEnabled ? 'On at 7:00 AM' : 'Disabled'}
+              <Text style={styles.settingDescText}>
+                {notificationsEnabled ? '7:00 AM' : 'Off'}
               </Text>
             </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: colors.border.subtle, true: colors.brand.primarySoft }}
-              thumbColor={notificationsEnabled ? colors.brand.primary : '#f4f3f4'}
+              trackColor={{ false: colors.border.subtle, true: colors.accent }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
 
           <View style={[styles.settingRow, styles.settingRowLast]}>
             <View style={styles.settingTextContainer}>
               <Text style={styles.settingLabel}>Dark Mode</Text>
-              <Text style={styles.settingDesc}>
-                {darkMode ? 'Easier on the eyes' : 'Light theme'}
+              <Text style={styles.settingDescText}>
+                {darkMode ? 'On' : 'Off'}
               </Text>
             </View>
             <Switch
               value={darkMode}
               onValueChange={setDarkMode}
-              trackColor={{ false: colors.border.subtle, true: colors.brand.primarySoft }}
-              thumbColor={darkMode ? colors.brand.primary : '#f4f3f4'}
+              trackColor={{ false: colors.border.subtle, true: colors.accent }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
         </View>
 
         {/* Sample CTA Button */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Primary Action</Text>
-          <Text style={styles.sectionDesc}>Forest green CTA with gold accent</Text>
+          <Text style={styles.sectionTitle}>Actions</Text>
           
           <Pressable style={styles.primaryButton}>
-            <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" style={styles.buttonIcon} />
             <Text style={styles.primaryButtonText}>Mark as Complete</Text>
           </Pressable>
 
-          <View style={styles.completedBadge}>
-            <Ionicons name="checkmark" size={16} color={colors.accent.gold} />
-            <Text style={styles.completedText}>7 days of prayer this month</Text>
+          <Pressable style={styles.secondaryButton}>
+            <Text style={styles.secondaryButtonText}>View History</Text>
+          </Pressable>
+
+          <View style={styles.completedState}>
+            <Ionicons name="checkmark" size={18} color={colors.accent} />
+            <Text style={styles.completedText}>Completed</Text>
           </View>
         </View>
 
         {/* Info */}
         <View style={styles.info}>
           <Text style={styles.infoText}>
-            These components use Daily Parish's{'\n'}
-            green + gold + warm neutral palette.
+            Minimal palette: black, white, gray{'\n'}
+            + one accent color
           </Text>
         </View>
       </ScrollView>
@@ -186,7 +178,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.surface,
   },
   content: {
-    padding: 20,
+    padding: 24,
   },
   header: {
     flexDirection: 'row',
@@ -197,31 +189,31 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '600',
     color: colors.text.primary,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    marginBottom: 24,
+    fontSize: 15,
+    color: colors.text.muted,
+    marginBottom: 32,
   },
   section: {
     backgroundColor: colors.bg.elevated,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text.primary,
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '500',
+    color: colors.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 16,
   },
   sectionDesc: {
     fontSize: 14,
@@ -230,36 +222,32 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
   },
   progressText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: colors.brand.primary,
+    color: colors.text.primary,
   },
   streakContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8,
   },
-  streakBadge: {
+  streakRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.accent.goldSoft,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 999,
+    alignItems: 'baseline',
   },
   streakLabel: {
-    fontSize: 20,
-    color: colors.accent.gold,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontSize: 18,
+    color: colors.text.muted,
+    fontWeight: '400',
+    marginLeft: 6,
   },
   settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.subtle,
   },
@@ -271,52 +259,66 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '400',
     color: colors.text.primary,
   },
-  settingDesc: {
+  settingDescText: {
     fontSize: 14,
     color: colors.text.muted,
     marginTop: 2,
   },
   primaryButton: {
-    backgroundColor: colors.brand.primary,
-    paddingVertical: 14,
+    backgroundColor: colors.accent,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 16,
-    flexDirection: 'row',
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonIcon: {
-    marginRight: 8,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
   },
-  completedBadge: {
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  secondaryButtonText: {
+    color: colors.text.primary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  completedState: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: 20,
     paddingVertical: 8,
   },
   completedText: {
-    fontSize: 14,
-    color: colors.text.secondary,
+    fontSize: 15,
+    color: colors.text.muted,
     marginLeft: 6,
   },
   info: {
     padding: 16,
-    backgroundColor: colors.brand.primarySoft,
+    backgroundColor: colors.bg.surface,
     borderRadius: 12,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
   },
   infoText: {
     fontSize: 14,
-    color: colors.brand.primary,
+    color: colors.text.muted,
     textAlign: 'center',
     lineHeight: 20,
   },
