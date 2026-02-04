@@ -1,28 +1,41 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Pressable, 
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  Dimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import * as Haptics from 'expo-haptics';
-import { 
-  ScreenShell, 
-  Card, 
-  Button,
-  DisplayMd, 
-  Body, 
-  Caption,
-  ScriptureHeading,
-  ScriptureBody,
-} from '../components';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  FadeIn,
+  runOnJS,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
 import { useTodayStore, useUserStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError } from '../lib';
-import { colors, spacing } from '../theme';
+import { lightColors as colors, spacing, radius, shadow } from '../theme';
+import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function TodayScreen() {
   const navigation = useNavigation();
   const { getToken } = useAuth();
   const [isCompletingSession, setIsCompletingSession] = useState(false);
+  const [showReading, setShowReading] = useState(false);
   
   // Stores
   const { 
@@ -46,10 +59,78 @@ export function TodayScreen() {
     currentStreak,
   } = useUserStore();
 
+  // Streak animation
+  const streakValue = useSharedValue(currentStreak);
+  const [displayStreak, setDisplayStreak] = useState(currentStreak);
+
   // Audio player
   const audioPlayer = useAudioPlayer({
     onPlaybackComplete: handleAudioComplete,
   });
+
+  // Progress animation for scrubbing
+  const progressBarWidth = SCREEN_WIDTH - 64;
+  const progress = useSharedValue(0);
+
+  // Sync progress with audio
+  useEffect(() => {
+    if (audioPlayer.progress !== undefined) {
+      progress.value = withTiming(audioPlayer.progress * 100, { duration: 100 });
+    }
+  }, [audioPlayer.progress]);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progress.value}%`,
+  }));
+
+  const knobStyle = useAnimatedStyle(() => ({
+    left: `${progress.value}%`,
+  }));
+
+  // Scrubbing gestures
+  const scrubGesture = Gesture.Pan()
+    .onStart(() => {
+      if (audioPlayer.isPlaying) {
+        runOnJS(audioPlayer.togglePlayback)();
+      }
+    })
+    .onUpdate((event) => {
+      const newProgress = Math.max(0, Math.min(100, (event.x / progressBarWidth) * 100));
+      progress.value = newProgress;
+    })
+    .onEnd((event) => {
+      const newProgress = Math.max(0, Math.min(100, (event.x / progressBarWidth) * 100));
+      runOnJS(handleSeek)(newProgress / 100);
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    });
+
+  const tapGesture = Gesture.Tap()
+    .onEnd((event) => {
+      const newProgress = Math.max(0, Math.min(100, (event.x / progressBarWidth) * 100));
+      progress.value = withTiming(newProgress, { duration: 200 });
+      runOnJS(handleSeek)(newProgress / 100);
+      runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Light);
+    });
+
+  const combinedGesture = Gesture.Race(scrubGesture, tapGesture);
+
+  function handleSeek(position: number) {
+    // position is 0-1, seekTo expects milliseconds
+    const positionMs = position * audioPlayer.duration;
+    audioPlayer.seekTo(positionMs);
+  }
+
+  const formatTime = (millis: number) => {
+    const totalSeconds = Math.floor(millis / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const getFormattedRemaining = () => {
+    const remaining = audioPlayer.duration - audioPlayer.position;
+    return formatTime(remaining);
+  };
 
   // Refresh when app comes to foreground on new day
   useAppStateRefresh(loadTodayData);
@@ -71,19 +152,14 @@ export function TodayScreen() {
       setScreenState('loading');
       const token = await getToken();
       
-      // Debug logging
-      console.log('[TodayScreen] Token received:', token ? `${token.substring(0, 20)}...` : 'NULL');
-      
       if (!token) {
         setError('Not authenticated');
         return;
       }
 
-      // Fetch readings and start session in parallel
       const [readings, session] = await Promise.all([
         api.getTodayReadings(token),
         api.startSession(token).catch((err: ApiError) => {
-          // 409 = already completed today
           if (err.status === 409) {
             return { session_id: null, already_completed: true };
           }
@@ -91,7 +167,6 @@ export function TodayScreen() {
         }),
       ]);
 
-      // Update store with readings
       setReadings({
         date: readings.date,
         first_reading: readings.first_reading,
@@ -100,7 +175,6 @@ export function TodayScreen() {
         audioUrl: readings.audio_unified_url,
       });
 
-      // Handle session state
       if ('already_completed' in session && session.already_completed) {
         setScreenState('completed');
       } else if (session.session_id) {
@@ -125,12 +199,10 @@ export function TodayScreen() {
 
   async function handleAudioComplete() {
     if (screenState === 'completed' || isCompletingSession) return;
-    
-    setScreenState('content_consumed');
     await completeSession();
   }
 
-  async function completeSession() {
+  const completeSession = useCallback(async () => {
     if (!sessionId || isCompletingSession) return;
     
     setIsCompletingSession(true);
@@ -141,41 +213,42 @@ export function TodayScreen() {
       const result = await api.completeSession(token, sessionId);
       
       if (result.success) {
-        // Update streak
         setStreak({
           current_streak: result.streak.current_streak,
           longest_streak: result.streak.longest_streak,
-          total_sessions: result.streak.current_streak, // Using current as approximation
+          total_sessions: result.streak.current_streak,
         });
         
-        // Mark first session complete
         if (!hasCompletedFirstSession) {
           setHasCompletedFirstSession(true);
         }
         
-        // Haptic feedback
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
         setScreenState('completed');
+
+        // Delayed streak animation
+        setTimeout(() => {
+          setDisplayStreak(result.streak.current_streak);
+          streakValue.value = result.streak.current_streak;
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }, 800);
       }
     } catch (error) {
       console.error('Failed to complete session:', error);
-      // Still show completion UI (optimistic)
       setScreenState('completed');
     } finally {
       setIsCompletingSession(false);
     }
-  }
+  }, [sessionId, isCompletingSession, getToken, hasCompletedFirstSession]);
 
   function handlePlayPause() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     audioPlayer.togglePlayback();
     
-    // Dismiss orientation card on first play
     if (!hasCompletedFirstSession && !audioPlayer.isPlaying) {
       setHasCompletedFirstSession(true);
     }
     
-    // Update screen state
     if (screenState === 'ready' && !audioPlayer.isPlaying) {
       setScreenState('playing');
     }
@@ -183,285 +256,595 @@ export function TodayScreen() {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '';
-    const d = new Date(dateString + 'T12:00:00'); // Avoid timezone issues
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    const d = new Date(dateString + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
   };
 
-  // Loading state
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const getScriptureTeaser = () => {
+    if (firstReading?.text) {
+      const words = firstReading.text.split(' ').slice(0, 8).join(' ');
+      return `"${words}..."`;
+    }
+    return '';
+  };
+
+  // ============================================
+  // LOADING STATE
+  // ============================================
   if (screenState === 'loading') {
     return (
-      <ScreenShell>
+      <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.brand.primary} />
-          <Body color="secondary" style={styles.loadingText}>
-            Loading today's readings...
-          </Body>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
-      </ScreenShell>
+      </SafeAreaView>
     );
   }
 
-  // Error state
+  // ============================================
+  // ERROR STATE
+  // ============================================
   if (screenState === 'error') {
     return (
-      <ScreenShell>
-        <View style={styles.errorHeader}>
-          <TouchableOpacity 
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={{ width: 44 }} />
+          <Pressable 
             style={styles.settingsButton}
             onPress={() => navigation.navigate('Settings' as never)}
           >
             <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
-          </TouchableOpacity>
+          </Pressable>
         </View>
         <View style={styles.centered}>
-          <Body color="secondary" style={styles.errorText}>
+          <Text style={styles.errorText}>
             {useTodayStore.getState().errorMessage || 'Something went wrong.'}
-          </Body>
-          <Button 
-            title="Try again" 
-            variant="ghost" 
-            onPress={loadTodayData}
-            style={styles.retryButton}
-          />
+          </Text>
+          <Pressable style={styles.retryButton} onPress={loadTodayData}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
         </View>
-      </ScreenShell>
+      </SafeAreaView>
     );
   }
 
+  // ============================================
+  // COMPLETED STATE
+  // ============================================
+  if (screenState === 'completed') {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Reading Modal */}
+        <Modal
+          visible={showReading}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowReading(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Today's Reading</Text>
+              <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </Pressable>
+            </View>
+            <ScrollView 
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {firstReading && (
+                <>
+                  <Text style={styles.scriptureRef}>{firstReading.reference}</Text>
+                  <Text style={styles.scriptureText}>{firstReading.text}</Text>
+                </>
+              )}
+              {gospel && (
+                <>
+                  <View style={styles.modalDivider} />
+                  <Text style={styles.scriptureRef}>{gospel.reference}</Text>
+                  <Text style={styles.scriptureText}>{gospel.text}</Text>
+                </>
+              )}
+              {commentary && (
+                <>
+                  <View style={styles.modalDivider} />
+                  <Text style={styles.commentaryLabel}>Commentary</Text>
+                  <Text style={styles.commentaryText}>{commentary}</Text>
+                </>
+              )}
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ width: 44 }} />
+          <Pressable 
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings' as never)}
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
+          </Pressable>
+        </View>
+
+        <Animated.View entering={FadeIn.duration(600)} style={styles.completedContainer}>
+          {/* Checkmark */}
+          <View style={styles.checkCircle}>
+            <Ionicons name="checkmark" size={48} color={colors.accent} />
+          </View>
+
+          {/* Message */}
+          <Text style={styles.completedTitle}>Go in peace</Text>
+
+          {/* Divider */}
+          <View style={styles.completedDivider} />
+          
+          {/* Streak */}
+          <Text style={styles.streakIntro}>You've prayed</Text>
+          <View style={styles.streakRow}>
+            <RollingCounter
+              value={streakValue}
+              height={44}
+              width={28}
+              fontSize={36}
+              color={colors.text.primary}
+            />
+            <Text style={styles.streakDays}> days</Text>
+          </View>
+          <Text style={styles.streakOutro}>in a row</Text>
+
+          {/* Spacer */}
+          <View style={{ height: 32 }} />
+
+          {/* Actions */}
+          <Pressable style={styles.completedAction} onPress={() => {
+            // Reset for replay
+            setScreenState('ready');
+            audioPlayer.seekTo(0);
+          }}>
+            <Ionicons name="refresh-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.completedActionText}>Replay</Text>
+          </Pressable>
+
+          <Pressable style={styles.completedAction} onPress={() => setShowReading(true)}>
+            <Ionicons name="document-text-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.completedActionText}>Read scripture</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.completedAction}
+            onPress={() => navigation.navigate('History' as never)}
+          >
+            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.completedActionText}>View history</Text>
+          </Pressable>
+        </Animated.View>
+      </SafeAreaView>
+    );
+  }
+
+  // ============================================
+  // READY / PLAYING STATE (Audio-First)
+  // ============================================
   return (
-    <ScreenShell>
+    <SafeAreaView style={styles.container}>
+      {/* Reading Modal */}
+      <Modal
+        visible={showReading}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowReading(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Today's Reading</Text>
+            <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={colors.text.secondary} />
+            </Pressable>
+          </View>
+          <ScrollView 
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {firstReading && (
+              <>
+                <Text style={styles.scriptureRef}>{firstReading.reference}</Text>
+                <Text style={styles.scriptureText}>{firstReading.text}</Text>
+              </>
+            )}
+            {gospel && (
+              <>
+                <View style={styles.modalDivider} />
+                <Text style={styles.scriptureRef}>{gospel.reference}</Text>
+                <Text style={styles.scriptureText}>{gospel.text}</Text>
+              </>
+            )}
+            {commentary && (
+              <>
+                <View style={styles.modalDivider} />
+                <Text style={styles.commentaryLabel}>Commentary</Text>
+                <Text style={styles.commentaryText}>{commentary}</Text>
+              </>
+            )}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </Modal>
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <View style={{ width: 44 }} />
+        <Pressable 
           style={styles.settingsButton}
           onPress={() => navigation.navigate('Settings' as never)}
         >
           <Ionicons name="settings-outline" size={24} color={colors.text.secondary} />
-        </TouchableOpacity>
-        
-        <DisplayMd>Today's Prayer</DisplayMd>
-        <Caption color="secondary">{formatDate(date)}</Caption>
+        </Pressable>
       </View>
 
-      {/* Orientation Card - First session only */}
-      {!hasCompletedFirstSession && screenState === 'ready' && (
-        <TouchableOpacity onPress={() => setHasCompletedFirstSession(true)}>
-          <Card variant="alt" style={styles.section}>
-            <Body>
-              Today's prayer takes about 5 minutes. Press play to listen, or read along below.
-            </Body>
-          </Card>
-        </TouchableOpacity>
-      )}
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        {/* Greeting */}
+        <Text style={styles.greeting}>{getGreeting()}</Text>
+        <Text style={styles.date}>{formatDate(date)}</Text>
 
-      {/* Audio Player */}
-      {screenState !== 'completed' ? (
-        <Card style={styles.section}>
-          <View style={styles.audioPlayer}>
-            <TouchableOpacity 
-              style={styles.playButton}
-              onPress={handlePlayPause}
-              disabled={!audioPlayer.isLoaded && !audioPlayer.error}
-            >
-              {audioPlayer.isBuffering ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Ionicons 
-                  name={audioPlayer.isPlaying ? 'pause' : 'play'} 
-                  size={24} 
-                  color="#FFFFFF" 
-                />
-              )}
-            </TouchableOpacity>
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${audioPlayer.progress * 100}%` }
-                  ]} 
-                />
+        {/* Play Button */}
+        <View style={styles.playerSection}>
+          <Pressable 
+            onPress={handlePlayPause}
+            style={styles.playButton}
+            disabled={!audioPlayer.isLoaded && !audioPlayer.error}
+          >
+            {audioPlayer.isBuffering ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Ionicons 
+                name={audioPlayer.isPlaying ? "pause" : "play"} 
+                size={44} 
+                color="#FFFFFF" 
+                style={!audioPlayer.isPlaying ? { marginLeft: 4 } : {}}
+              />
+            )}
+          </Pressable>
+
+          <Text style={styles.prayerTitle}>Today's Prayer</Text>
+          <Text style={styles.duration}>
+            {audioPlayer.isPlaying 
+              ? `${getFormattedRemaining()} remaining`
+              : audioPlayer.formattedDuration || '~5 min'
+            }
+          </Text>
+        </View>
+
+        {/* Progress Bar */}
+        <View style={styles.progressSection}>
+          <GestureDetector gesture={combinedGesture}>
+            <View style={styles.progressTouchArea}>
+              <View style={styles.progressTrack}>
+                <Animated.View style={[styles.progressFill, progressStyle]} />
+                <Animated.View style={[styles.progressKnob, knobStyle]} />
               </View>
-              <Caption color="muted">
-                {audioPlayer.formattedPosition} / {audioPlayer.formattedDuration}
-              </Caption>
             </View>
+          </GestureDetector>
+          <View style={styles.progressTimes}>
+            <Text style={styles.progressTime}>{audioPlayer.formattedPosition || '0:00'}</Text>
+            <Text style={styles.progressTime}>{audioPlayer.formattedDuration || '0:00'}</Text>
           </View>
-        </Card>
-      ) : (
-        // Completed audio state - minimal
-        <Card style={styles.section}>
-          <View style={styles.completedAudio}>
-            <Ionicons name="checkmark" size={16} color={colors.brand.primary} />
-            <Caption color="muted" style={styles.completedAudioText}>
-              Today's audio
-            </Caption>
-          </View>
-        </Card>
-      )}
+        </View>
 
-      {/* First Reading */}
-      {firstReading && (
-        <Card style={styles.section}>
-          <ScriptureHeading style={styles.reference}>
-            {firstReading.reference}
-          </ScriptureHeading>
-          <View style={styles.divider} />
-          <ScriptureBody>{firstReading.text}</ScriptureBody>
-        </Card>
-      )}
-
-      {/* Gospel */}
-      {gospel && (
-        <Card style={styles.section}>
-          <ScriptureHeading style={styles.reference}>
-            {gospel.reference}
-          </ScriptureHeading>
-          <View style={styles.divider} />
-          <ScriptureBody>{gospel.text}</ScriptureBody>
-        </Card>
-      )}
-
-      {/* Commentary */}
-      {commentary && (
-        <Card variant="alt" style={styles.section}>
-          <Caption color="muted" style={styles.commentaryLabel}>
-            Commentary
-          </Caption>
-          <Body>{commentary}</Body>
-        </Card>
-      )}
-
-      {/* Mark as Complete button (for silent readers) */}
-      {screenState === 'content_consumed' && !isCompletingSession && (
-        <Button
-          title="Mark as complete"
-          variant="ghost"
-          onPress={completeSession}
-          style={styles.completeButton}
-        />
-      )}
-
-      {/* Completion Panel */}
-      {screenState === 'completed' && (
-        <Card style={styles.completionPanel}>
-          <Ionicons name="checkmark" size={32} color={colors.accent.gold} />
-          <DisplayMd style={styles.completionTitle}>You prayed today.</DisplayMd>
-          <Body color="secondary">
-            {currentStreak} {currentStreak === 1 ? 'day' : 'days'} of prayer
-          </Body>
-          <Button
-            title="View History"
-            variant="ghost"
-            onPress={() => navigation.navigate('History' as never)}
-            style={styles.historyButton}
-          />
-        </Card>
-      )}
-    </ScreenShell>
+        {/* Scripture Teaser */}
+        <View style={styles.teaserSection}>
+          <Text style={styles.teaserText}>{getScriptureTeaser()}</Text>
+          
+          <Pressable 
+            style={styles.seeFullReading}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowReading(true);
+            }}
+          >
+            <Text style={styles.seeFullReadingText}>See full reading</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+          </Pressable>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
+// ============================================
+// STYLES
+// ============================================
+
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg.surface,
+  },
+  
+  // Header
   header: {
-    marginBottom: spacing['2xl'],
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
   },
   settingsButton: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    padding: spacing.sm,
-    zIndex: 1,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
-  section: {
-    marginBottom: spacing['2xl'],
+
+  // Main Content
+  mainContent: {
+    flex: 1,
+    paddingHorizontal: 32,
+    justifyContent: 'center',
   },
-  audioPlayer: {
-    flexDirection: 'row',
+
+  // Greeting
+  greeting: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: colors.text.primary,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  date: {
+    fontSize: 17,
+    color: colors.text.muted,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 48,
+  },
+
+  // Player
+  playerSection: {
     alignItems: 'center',
+    marginBottom: 40,
   },
   playButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.accent,
     justifyContent: 'center',
-    marginRight: spacing.lg,
+    alignItems: 'center',
+    marginBottom: 24,
+    ...shadow.medium,
   },
-  progressContainer: {
-    flex: 1,
+  prayerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.text.primary,
+    marginBottom: 4,
   },
-  progressBar: {
+  duration: {
+    fontSize: 15,
+    color: colors.text.muted,
+  },
+
+  // Progress
+  progressSection: {
+    marginBottom: 40,
+  },
+  progressTouchArea: {
+    height: 24,
+    justifyContent: 'center',
+  },
+  progressTrack: {
     height: 4,
-    backgroundColor: colors.border.subtle,
     borderRadius: 2,
-    marginBottom: spacing.xs,
-    overflow: 'hidden',
+    backgroundColor: colors.bg.subtle,
+    overflow: 'visible',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.brand.primary,
     borderRadius: 2,
+    backgroundColor: colors.accent,
   },
-  completedAudio: {
+  progressKnob: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.accent,
+    top: -6,
+    marginLeft: -8,
+    ...shadow.subtle,
+  },
+  progressTimes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  progressTime: {
+    fontSize: 13,
+    color: colors.text.muted,
+  },
+
+  // Teaser
+  teaserSection: {
+    alignItems: 'center',
+  },
+  teaserText: {
+    fontSize: 17,
+    fontStyle: 'italic',
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 26,
+    marginBottom: 16,
+  },
+  seeFullReading: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  seeFullReadingText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.accent,
+  },
+
+  // Completed State
+  completedContainer: {
+    flex: 1,
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    paddingHorizontal: 32,
   },
-  completedAudioText: {
-    marginLeft: spacing.xs,
+  checkCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.accentSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  reference: {
-    marginBottom: spacing.sm,
+  completedTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.text.primary,
   },
-  divider: {
+  completedDivider: {
+    width: 48,
     height: 1,
-    backgroundColor: colors.border.subtle,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.border,
+    marginVertical: 24,
+  },
+  streakIntro: {
+    fontSize: 15,
+    color: colors.text.muted,
+    marginBottom: 4,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  streakDays: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: colors.text.primary,
+  },
+  streakOutro: {
+    fontSize: 15,
+    color: colors.text.muted,
+    marginTop: 4,
+  },
+  completedAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  completedActionText: {
+    fontSize: 17,
+    color: colors.text.secondary,
+    marginLeft: 12,
+  },
+
+  // Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.bg.surface,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalContent: {
+    padding: 24,
+  },
+  scriptureRef: {
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    marginBottom: 16,
+  },
+  scriptureText: {
+    fontSize: 22,
+    fontFamily: 'Georgia',
+    fontStyle: 'italic',
+    lineHeight: 34,
+    color: colors.text.scripture,
+  },
+  modalDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 32,
   },
   commentaryLabel: {
-    marginBottom: spacing.sm,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: colors.text.muted,
+    marginBottom: 16,
   },
-  completeButton: {
-    alignSelf: 'center',
-    marginBottom: spacing['2xl'],
+  commentaryText: {
+    fontSize: 17,
+    lineHeight: 28,
+    color: colors.text.primary,
   },
-  completionPanel: {
-    alignItems: 'center',
-    paddingVertical: spacing['3xl'],
-    marginBottom: spacing['2xl'],
-  },
-  completionTitle: {
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  historyButton: {
-    marginTop: spacing.xl,
-  },
+
+  // Loading & Error
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
   loadingText: {
+    fontSize: 15,
+    color: colors.text.muted,
     marginTop: spacing.lg,
   },
   errorText: {
+    fontSize: 16,
+    color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
   },
   retryButton: {
-    marginTop: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  retryText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.accent,
   },
 });

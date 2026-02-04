@@ -1,30 +1,69 @@
 /**
  * Daily Parish Design Tokens
- * Based on Frontend-App/03-design-system.md
+ * Refined Minimal Palette — Contemplative Premium
  */
 
-export const colors = {
+// Light Mode
+export const lightColors = {
   bg: {
-    surface: '#FAF9F6',
-    surfaceAlt: '#F1EEE6',
+    surface: '#F8F7F4',      // Warm paper white
     elevated: '#FFFFFF',
+    subtle: '#F2F0EB',       // For nested elements
   },
   text: {
-    primary: '#212121',
-    secondary: '#4A4A4A',
-    muted: '#777777',
+    primary: '#1C1C1E',      // Soft black
+    secondary: '#48484A',
+    muted: '#8E8E93',
+    scripture: '#2C2C2E',    // Slightly warmer for reading
+  },
+  accent: '#3D5A47',         // Muted forest green
+  accentSoft: 'rgba(61, 90, 71, 0.08)',
+  border: '#E8E6E1',
+  shadow: 'rgba(0, 0, 0, 0.04)',
+};
+
+// Dark Mode
+export const darkColors = {
+  bg: {
+    surface: '#0D0D0D',
+    elevated: '#1A1A1A',
+    subtle: '#252525',
+  },
+  text: {
+    primary: '#F5F5F7',
+    secondary: '#A1A1A6',
+    muted: '#636366',
+    scripture: '#E5E5EA',
+  },
+  accent: '#D4A84B',         // Warm gold
+  accentSoft: 'rgba(212, 168, 75, 0.12)',
+  border: '#2C2C2E',
+  shadow: 'rgba(0, 0, 0, 0.3)',
+};
+
+// Legacy colors (for backwards compatibility during migration)
+export const colors = {
+  bg: {
+    surface: lightColors.bg.surface,
+    surfaceAlt: lightColors.bg.subtle,
+    elevated: lightColors.bg.elevated,
+  },
+  text: {
+    primary: lightColors.text.primary,
+    secondary: lightColors.text.secondary,
+    muted: lightColors.text.muted,
   },
   brand: {
-    primary: '#2D5A3F',
-    primaryLight: '#3E7A56',
-    primarySoft: '#E4EFE8',
+    primary: lightColors.accent,
+    primaryLight: '#4A6B54',
+    primarySoft: lightColors.accentSoft,
   },
   accent: {
-    gold: '#C89B3C',
+    gold: darkColors.accent,
     red: '#B5564A',
   },
   border: {
-    subtle: '#E2DED2',
+    subtle: lightColors.border,
     strong: '#C9C3B3',
   },
   state: {
@@ -38,7 +77,7 @@ export const typography = {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '600' as const,
-    fontFamily: 'System', // Will use Inter/Work Sans when configured
+    fontFamily: 'System',
   },
   displayMd: {
     fontSize: 22,
@@ -74,13 +113,13 @@ export const typography = {
     fontSize: 18,
     lineHeight: 24,
     fontWeight: '600' as const,
-    fontFamily: 'Georgia', // Serif for scripture
+    fontFamily: 'Georgia',
   },
   scriptureBody: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '400' as const,
-    fontFamily: 'Georgia', // Serif for scripture
+    fontFamily: 'Georgia',
   },
 } as const;
 
@@ -98,17 +137,23 @@ export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 20,
   pill: 999,
 } as const;
 
 export const shadow = {
   subtle: {
-    // iOS
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.06,
     shadowRadius: 4,
-    // Android
     elevation: 1,
+  },
+  medium: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
 } as const;
