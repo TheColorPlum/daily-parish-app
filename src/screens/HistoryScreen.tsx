@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@clerk/clerk-expo';
 import { MonthCalendar } from '../components/MonthCalendar';
-import { api } from '../lib';
+import { api, ApiError } from '../lib';
 import { lightColors as colors, spacing } from '../theme';
 import type { HistoryItem } from '../types';
 import type { DrawerParamList } from '../navigation/AppNavigator';
@@ -55,10 +55,66 @@ export function HistoryScreen() {
     return { completedDates: dates, sessionsByDate: byDate };
   }, [sessions]);
 
-  const handleDayPress = (date: string) => {
-    const session = sessionsByDate.get(date);
-    if (session) {
-      (navigation as any).navigate('HistoryDetail', { item: session });
+  // Calculate available dates (last Sunday through today)
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>();
+    const today = new Date();
+    
+    // Find last Sunday (or today if it's Sunday)
+    const lastSunday = new Date(today);
+    lastSunday.setDate(today.getDate() - today.getDay());
+    lastSunday.setHours(0, 0, 0, 0);
+    
+    // Add all dates from last Sunday to today
+    const current = new Date(lastSunday);
+    while (current <= today) {
+      const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+      dates.add(dateStr);
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  }, []);
+
+  const [fetchingDate, setFetchingDate] = useState<string | null>(null);
+
+  const handleDayPress = async (date: string, hasSession: boolean) => {
+    // If we have session data, use it directly
+    if (hasSession) {
+      const session = sessionsByDate.get(date);
+      if (session) {
+        (navigation as any).navigate('HistoryDetail', { item: session });
+        return;
+      }
+    }
+    
+    // Otherwise, fetch the reading for this date
+    try {
+      setFetchingDate(date);
+      const token = await getToken();
+      if (!token) return;
+      
+      const reading = await api.getReadingsByDate(token, date);
+      
+      // Convert to HistoryItem format
+      const item: HistoryItem = {
+        date: reading.date,
+        first_reading: reading.first_reading,
+        gospel: reading.gospel,
+        commentary_unified: reading.commentary_unified || '',
+        streak_count: 0, // No session, so no streak
+      };
+      
+      (navigation as any).navigate('HistoryDetail', { item });
+    } catch (err) {
+      console.error('Failed to fetch reading:', err);
+      if (err instanceof ApiError && err.status === 404) {
+        Alert.alert('Not Available', 'Readings for this date are not available.');
+      } else {
+        Alert.alert('Error', 'Failed to load reading. Please try again.');
+      }
+    } finally {
+      setFetchingDate(null);
     }
   };
 
@@ -101,8 +157,16 @@ export function HistoryScreen() {
         <View style={styles.calendarContainer}>
           <MonthCalendar
             completedDates={completedDates}
+            availableDates={availableDates}
             onDayPress={handleDayPress}
           />
+          
+          {fetchingDate && (
+            <View style={styles.fetchingOverlay}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={styles.fetchingText}>Loading reading...</Text>
+            </View>
+          )}
           
           {sessions.length === 0 && (
             <View style={styles.emptyState}>
@@ -197,5 +261,16 @@ const styles = StyleSheet.create({
   statsText: {
     fontSize: 15,
     color: colors.text.muted,
+  },
+  fetchingOverlay: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  fetchingText: {
+    fontSize: 14,
+    color: colors.text.muted,
+    marginLeft: spacing.sm,
   },
 });

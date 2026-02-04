@@ -62,6 +62,9 @@ export const api = {
   getTodayReadings: (token: string) => 
     request<TodayResponse>('/readings/today', { token }),
   
+  getReadingsByDate: (token: string, date: string) =>
+    request<TodayResponse>(`/readings/${date}`, { token }),
+  
   // Sessions
   startSession: (token: string) =>
     request<SessionStartResponse>('/session/start', { 

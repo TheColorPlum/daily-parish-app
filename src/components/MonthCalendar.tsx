@@ -9,15 +9,17 @@ const DAY_SIZE = Math.floor((SCREEN_WIDTH - 48 - 12) / 7); // 48 = padding, 12 =
 interface MonthCalendarProps {
   /** Set of completed dates in YYYY-MM-DD format */
   completedDates: Set<string>;
-  /** Called when a completed day is tapped */
-  onDayPress: (date: string) => void;
+  /** Set of available dates (have readings) in YYYY-MM-DD format */
+  availableDates: Set<string>;
+  /** Called when an available day is tapped */
+  onDayPress: (date: string, hasSession: boolean) => void;
   /** Initial month to display (defaults to current) */
   initialDate?: Date;
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export function MonthCalendar({ completedDates, onDayPress, initialDate }: MonthCalendarProps) {
+export function MonthCalendar({ completedDates, availableDates, onDayPress, initialDate }: MonthCalendarProps) {
   const [currentDate, setCurrentDate] = useState(initialDate || new Date());
   
   const today = new Date();
@@ -72,8 +74,11 @@ export function MonthCalendar({ completedDates, onDayPress, initialDate }: Month
   
   function handleDayPress(day: number) {
     const dateStr = getDayString(day);
-    if (completedDates.has(dateStr)) {
-      onDayPress(dateStr);
+    const isAvailable = availableDates.has(dateStr);
+    const hasSession = completedDates.has(dateStr);
+    
+    if (isAvailable) {
+      onDayPress(dateStr, hasSession);
     }
   }
   
@@ -118,6 +123,7 @@ export function MonthCalendar({ completedDates, onDayPress, initialDate }: Month
           
           const dateStr = getDayString(day);
           const isCompleted = completedDates.has(dateStr);
+          const isAvailable = availableDates.has(dateStr);
           const isToday = dateStr === todayStr;
           const isFuture = new Date(dateStr) > today;
           
@@ -126,8 +132,8 @@ export function MonthCalendar({ completedDates, onDayPress, initialDate }: Month
               key={day}
               style={styles.dayCell}
               onPress={() => handleDayPress(day)}
-              disabled={!isCompleted}
-              activeOpacity={isCompleted ? 0.6 : 1}
+              disabled={!isAvailable}
+              activeOpacity={isAvailable ? 0.6 : 1}
             >
               <View style={[
                 styles.dayInner,
