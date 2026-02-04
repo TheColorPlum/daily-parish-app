@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -112,15 +112,22 @@ export function ComponentDemo() {
   // Progress bar width for scrubbing
   const progressBarWidth = SCREEN_WIDTH - 64; // 32px padding each side
 
-  // Simulate playback
+  // Simulate playback - only depends on isPlaying, not currentTime
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isPlaying && currentTime < totalTime) {
+    if (isPlaying) {
       interval = setInterval(() => {
         setCurrentTime(prev => {
+          if (prev >= totalTime) {
+            clearInterval(interval);
+            setIsPlaying(false);
+            handleCompletion();
+            return prev;
+          }
           const next = prev + 1;
           progress.value = withTiming((next / totalTime) * 100, { duration: 900 });
           if (next >= totalTime) {
+            clearInterval(interval);
             setIsPlaying(false);
             handleCompletion();
           }
@@ -129,16 +136,18 @@ export function ComponentDemo() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, currentTime]);
+  }, [isPlaying]);
 
-  const handleCompletion = () => {
+  const handleCompletion = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleted(true);
     // Animate streak
-    const newStreak = streak + 1;
-    setStreak(newStreak);
-    streakValue.value = newStreak;
-  };
+    setStreak(prev => {
+      const newStreak = prev + 1;
+      streakValue.value = newStreak;
+      return newStreak;
+    });
+  }, []);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
