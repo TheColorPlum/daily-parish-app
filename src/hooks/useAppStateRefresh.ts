@@ -40,7 +40,6 @@ export function useAppStateRefresh(onRefreshNeeded: () => void) {
     });
     
     if (date !== today) {
-      console.log('Date changed, refreshing...', { stored: date, today });
       clearToday();
       onRefreshNeeded();
     }

@@ -147,7 +147,6 @@ export function TodayScreen() {
 
   // Load audio when URL is available
   useEffect(() => {
-    console.log('[TodayScreen] Audio state:', { audioUrl, screenState, isLoaded: audioPlayer.isLoaded });
     if (audioUrl && (screenState === 'ready' || screenState === 'playing')) {
       audioPlayer.loadAudio(audioUrl);
     }
@@ -172,8 +171,6 @@ export function TodayScreen() {
           throw err;
         }),
       ]);
-
-      console.log('[TodayScreen] API Response:', JSON.stringify(readings, null, 2));
 
       setReadings({
         date: readings.date,
@@ -259,8 +256,6 @@ export function TodayScreen() {
   }, [sessionId, isCompletingSession, getToken, hasCompletedFirstSession]);
 
   function handlePlayPause() {
-    console.log('[TodayScreen] Play pressed:', { audioUrl, isLoaded: audioPlayer.isLoaded, isPlaying: audioPlayer.isPlaying, error: audioPlayer.error });
-    
     // If no audio URL, open reading modal instead
     if (!audioUrl) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

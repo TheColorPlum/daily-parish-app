@@ -49,8 +49,6 @@ export function WelcomeScreen() {
 
       if (result.status === 'complete') {
         await setSignUpActive({ session: result.createdSessionId });
-      } else {
-        console.log('Verification incomplete:', result);
       }
     } catch (err: any) {
       console.error('Verification error:', err);
@@ -72,8 +70,6 @@ export function WelcomeScreen() {
 
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
-      } else {
-        console.log('Sign in incomplete:', result);
       }
     } catch (err: any) {
       console.error('Sign in error:', err);

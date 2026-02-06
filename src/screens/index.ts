@@ -4,4 +4,3 @@ export { HistoryScreen } from './HistoryScreen';
 export { HistoryDetailScreen } from './HistoryDetailScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { ProfileScreen } from './ProfileScreen';
-export { ComponentDemo } from './ComponentDemo';

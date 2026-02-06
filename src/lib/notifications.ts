@@ -58,7 +58,6 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
       },
     });
 
-    console.log(`[notifications] Scheduled daily reminder at ${hour}:${minute.toString().padStart(2, '0')} (id: ${identifier})`);
     return identifier;
   } catch (error) {
     console.error('[notifications] Failed to schedule daily reminder:', error);
@@ -72,7 +71,6 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 export async function cancelDailyReminder(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
-    console.log('[notifications] Cancelled all scheduled notifications');
   } catch (error) {
     console.error('[notifications] Failed to cancel notifications:', error);
   }

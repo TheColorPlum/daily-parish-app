@@ -10,7 +10,6 @@ import {
   HistoryDetailScreen,
   SettingsScreen,
   ProfileScreen,
-  ComponentDemo,
 } from '../screens';
 import { DrawerContent } from './DrawerContent';
 import { useUserLoader } from '../hooks';
@@ -32,7 +31,6 @@ export type DrawerParamList = {
 export type RootStackParamList = {
   Main: undefined;
   HistoryDetail: { item: HistoryItem };
-  ComponentDemo: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -93,7 +91,6 @@ function MainNavigator() {
     >
       <RootStack.Screen name="Main" component={DrawerNavigator} />
       <RootStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-      <RootStack.Screen name="ComponentDemo" component={ComponentDemo} />
     </RootStack.Navigator>
   );
 }
