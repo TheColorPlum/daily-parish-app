@@ -371,8 +371,10 @@ export function TodayScreen() {
               {responsorialPsalm && (
                 <>
                   <View style={styles.modalDivider} />
-                  <Text style={styles.psalmLabel}>Responsorial Psalm</Text>
-                  <Text style={styles.psalmText}>{formatReference(responsorialPsalm)}</Text>
+                  <Text style={styles.scriptureRef}>{formatReference(responsorialPsalm.reference)}</Text>
+                  {responsorialPsalm.text ? (
+                    <Text style={styles.scriptureText}>{responsorialPsalm.text}</Text>
+                  ) : null}
                 </>
               )}
               {gospel && (
@@ -494,8 +496,10 @@ export function TodayScreen() {
             {responsorialPsalm && (
               <>
                 <View style={styles.modalDivider} />
-                <Text style={styles.psalmLabel}>Responsorial Psalm</Text>
-                <Text style={styles.psalmText}>{formatReference(responsorialPsalm)}</Text>
+                <Text style={styles.scriptureRef}>{formatReference(responsorialPsalm.reference)}</Text>
+                {responsorialPsalm.text ? (
+                  <Text style={styles.scriptureText}>{responsorialPsalm.text}</Text>
+                ) : null}
               </>
             )}
             {gospel && (

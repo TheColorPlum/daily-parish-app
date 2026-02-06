@@ -18,7 +18,7 @@ interface Reading {
 interface ReadingsData {
   date: string;
   first_reading: Reading;
-  responsorial_psalm: string | null;
+  responsorial_psalm: Reading | null;
   gospel: Reading;
   commentary: string;
   audioUrl: string | null;
@@ -28,7 +28,7 @@ interface TodayState {
   // Data
   date: string | null;
   firstReading: Reading | null;
-  responsorialPsalm: string | null;
+  responsorialPsalm: Reading | null;
   gospel: Reading | null;
   commentary: string | null;
   audioUrl: string | null;

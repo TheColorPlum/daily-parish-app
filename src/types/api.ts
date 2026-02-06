@@ -11,7 +11,7 @@ export interface Reading {
 export interface TodayResponse {
   date: string;
   first_reading: Reading;
-  responsorial_psalm: string | null;
+  responsorial_psalm: Reading | null;
   gospel: Reading;
   commentary_unified: string;
   audio_unified_url: string | null;
