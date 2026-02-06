@@ -6,10 +6,12 @@ import { useAuth } from '@clerk/clerk-expo';
 import {
   WelcomeScreen,
   TodayScreen,
+  PrayScreen,
   HistoryScreen,
   HistoryDetailScreen,
   SettingsScreen,
   ProfileScreen,
+  SupportScreen,
 } from '../screens';
 import { DrawerContent } from './DrawerContent';
 import { useUserLoader } from '../hooks';
@@ -23,6 +25,7 @@ export type AuthStackParamList = {
 
 export type DrawerParamList = {
   Today: undefined;
+  Pray: undefined;
   History: undefined;
   Settings: undefined;
   Profile: undefined;
@@ -31,6 +34,7 @@ export type DrawerParamList = {
 export type RootStackParamList = {
   Main: undefined;
   HistoryDetail: { item: HistoryItem };
+  Support: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -68,6 +72,7 @@ function DrawerNavigator() {
       }}
     >
       <Drawer.Screen name="Today" component={TodayScreen} />
+      <Drawer.Screen name="Pray" component={PrayScreen} />
       <Drawer.Screen name="History" component={HistoryScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
       <Drawer.Screen name="Profile" component={ProfileScreen} />
@@ -91,6 +96,7 @@ function MainNavigator() {
     >
       <RootStack.Screen name="Main" component={DrawerNavigator} />
       <RootStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
+      <RootStack.Screen name="Support" component={SupportScreen} />
     </RootStack.Navigator>
   );
 }

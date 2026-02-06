@@ -102,6 +102,13 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             colors={colors}
           />
           <DrawerItem
+            icon="create-outline"
+            label="My Prayers"
+            isActive={currentRoute === 'Pray'}
+            onPress={() => navigation.navigate('Pray')}
+            colors={colors}
+          />
+          <DrawerItem
             icon="time-outline"
             label="History"
             isActive={currentRoute === 'History'}
@@ -127,8 +134,18 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         {/* Divider */}
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        {/* Sign Out */}
+        {/* Support & Sign Out */}
         <View style={styles.nav}>
+          <DrawerItem
+            icon="heart-outline"
+            label="Support Votive"
+            onPress={() => {
+              navigation.closeDrawer();
+              // @ts-ignore - navigating to root stack
+              navigation.navigate('Support');
+            }}
+            colors={colors}
+          />
           <DrawerItem
             icon="log-out-outline"
             label="Sign Out"
