@@ -35,6 +35,7 @@ export interface HistoryItem {
   date: string;
   streak_count: number;
   first_reading: Reading;
+  responsorial_psalm: Reading | null;
   gospel: Reading;
   commentary_unified: string;
 }

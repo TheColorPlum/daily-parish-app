@@ -51,6 +51,17 @@ export function HistoryDetailScreen() {
 
         <View style={styles.divider} />
 
+        {/* Responsorial Psalm */}
+        {item.responsorial_psalm && (
+          <>
+            <Text style={styles.scriptureRef}>{formatReference(item.responsorial_psalm.reference)}</Text>
+            {item.responsorial_psalm.text ? (
+              <Text style={styles.scriptureText}>{item.responsorial_psalm.text}</Text>
+            ) : null}
+            <View style={styles.divider} />
+          </>
+        )}
+
         {/* Gospel */}
         <Text style={styles.scriptureRef}>{formatReference(item.gospel.reference)}</Text>
         <Text style={styles.scriptureText}>{item.gospel.text}</Text>

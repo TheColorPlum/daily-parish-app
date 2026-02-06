@@ -101,6 +101,7 @@ export function HistoryScreen() {
       const item: HistoryItem = {
         date: reading.date,
         first_reading: reading.first_reading,
+        responsorial_psalm: reading.responsorial_psalm,
         gospel: reading.gospel,
         commentary_unified: reading.commentary_unified || '',
         streak_count: 0, // No session, so no streak
