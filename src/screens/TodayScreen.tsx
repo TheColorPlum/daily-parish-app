@@ -263,6 +263,11 @@ export function TodayScreen() {
       return;
     }
     
+    // Don't try to play if audio isn't loaded yet
+    if (!audioPlayer.isLoaded) {
+      return;
+    }
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     audioPlayer.togglePlayback();
     
@@ -544,7 +549,7 @@ export function TodayScreen() {
             onPress={handlePlayPause}
             style={[styles.playButton, !audioUrl && styles.readButton]}
           >
-            {audioPlayer.isBuffering ? (
+            {audioUrl && (!audioPlayer.isLoaded || audioPlayer.isBuffering) ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : audioUrl ? (
               <Ionicons 
