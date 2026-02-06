@@ -198,7 +198,7 @@ export function TodayScreen() {
           setError('Something went wrong. Please try again.');
         }
       } else {
-        setError('Daily Parish needs an internet connection.');
+        setError('Votive needs an internet connection.');
       }
     }
   }

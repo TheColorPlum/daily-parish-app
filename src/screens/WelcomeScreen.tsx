@@ -85,7 +85,7 @@ export function WelcomeScreen() {
       <ScreenShell scrollable={false}>
         <View style={styles.content}>
           <View style={styles.iconPlaceholder} />
-          <DisplayLg style={styles.title}>Daily Parish</DisplayLg>
+          <DisplayLg style={styles.title}>Votive</DisplayLg>
           <Body color="secondary" style={styles.tagline}>
             A quiet daily prayer practice.
           </Body>

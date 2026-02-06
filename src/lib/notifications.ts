@@ -47,7 +47,7 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
 
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Daily Parish',
+        title: 'Votive',
         body: 'Your daily prayer is ready.',
         sound: true,
       },
