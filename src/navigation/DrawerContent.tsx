@@ -53,7 +53,6 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   
-  const { currentStreak } = useUserStore();
   const clearUser = useUserStore((state) => state.clearUser);
   const clearToday = useTodayStore((state) => state.clearToday);
 
@@ -81,11 +80,6 @@ export function DrawerContent(props: DrawerContentComponentProps) {
           </View>
           <View style={styles.headerInfo}>
             <Text style={[styles.email, { color: colors.text.primary }]} numberOfLines={1}>{userEmail}</Text>
-            {currentStreak > 0 && (
-              <Text style={[styles.streakText, { color: colors.text.muted }]}>
-                🔥 {currentStreak} day streak
-              </Text>
-            )}
           </View>
         </View>
 
@@ -102,14 +96,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             colors={colors}
           />
           <DrawerItem
-            icon="create-outline"
-            label="My Prayers"
-            isActive={currentRoute === 'Pray'}
-            onPress={() => navigation.navigate('Pray')}
-            colors={colors}
-          />
-          <DrawerItem
-            icon="time-outline"
+            icon="heart-outline"
             label="History"
             isActive={currentRoute === 'History'}
             onPress={() => navigation.navigate('History')}
@@ -123,10 +110,10 @@ export function DrawerContent(props: DrawerContentComponentProps) {
             colors={colors}
           />
           <DrawerItem
-            icon="person-outline"
-            label="Profile"
-            isActive={currentRoute === 'Profile'}
-            onPress={() => navigation.navigate('Profile')}
+            icon="gift-outline"
+            label="Support"
+            isActive={currentRoute === 'Support'}
+            onPress={() => navigation.navigate('Support')}
             colors={colors}
           />
         </View>
@@ -134,18 +121,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
         {/* Divider */}
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        {/* Support & Sign Out */}
+        {/* Sign Out */}
         <View style={styles.nav}>
-          <DrawerItem
-            icon="heart-outline"
-            label="Support Votive"
-            onPress={() => {
-              navigation.closeDrawer();
-              // @ts-ignore - navigating to root stack
-              navigation.navigate('Support');
-            }}
-            colors={colors}
-          />
           <DrawerItem
             icon="log-out-outline"
             label="Sign Out"
@@ -198,10 +175,6 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 16,
-    marginBottom: 2,
-  },
-  streakText: {
-    fontSize: 13,
   },
   divider: {
     height: 1,

@@ -10,7 +10,7 @@ import { api } from '../lib';
 export function useUserLoader() {
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
-  const { setUser, setStreak } = useUserStore();
+  const { setUser } = useUserStore();
 
   useEffect(() => {
     if (isSignedIn && user) {

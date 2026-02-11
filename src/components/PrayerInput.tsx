@@ -146,7 +146,7 @@ export function PrayerInput({ readingId, readingDate }: PrayerInputProps) {
             {inputState === 'saving' ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
+              <Text style={styles.saveButtonText}>Amen</Text>
             )}
           </Pressable>
         </View>

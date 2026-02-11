@@ -1,22 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useAuth } from '@clerk/clerk-expo';
 import {
   WelcomeScreen,
+  WelcomeInterstitial,
   TodayScreen,
   PrayScreen,
-  HistoryScreen,
-  HistoryDetailScreen,
   SettingsScreen,
-  ProfileScreen,
   SupportScreen,
 } from '../screens';
 import { DrawerContent } from './DrawerContent';
 import { useUserLoader } from '../hooks';
+import { useUserStore } from '../stores';
 import { useTheme } from '../theme';
-import type { HistoryItem } from '../types';
 
 // Type definitions for navigation
 export type AuthStackParamList = {
@@ -25,16 +23,13 @@ export type AuthStackParamList = {
 
 export type DrawerParamList = {
   Today: undefined;
-  Pray: undefined;
-  History: undefined;
+  History: undefined;  // Prayer journal
   Settings: undefined;
-  Profile: undefined;
+  Support: undefined;
 };
 
 export type RootStackParamList = {
   Main: undefined;
-  HistoryDetail: { item: HistoryItem };
-  Support: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -72,19 +67,27 @@ function DrawerNavigator() {
       }}
     >
       <Drawer.Screen name="Today" component={TodayScreen} />
-      <Drawer.Screen name="Pray" component={PrayScreen} />
-      <Drawer.Screen name="History" component={HistoryScreen} />
+      <Drawer.Screen name="History" component={PrayScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
-      <Drawer.Screen name="Profile" component={ProfileScreen} />
+      <Drawer.Screen name="Support" component={SupportScreen} />
     </Drawer.Navigator>
   );
 }
 
 function MainNavigator() {
   const { colors } = useTheme();
+  const { hasSeenWelcome } = useUserStore();
+  const [showInterstitial, setShowInterstitial] = useState(!hasSeenWelcome);
   
   // Load user profile on auth
   useUserLoader();
+  
+  // Show welcome interstitial for first-time users
+  if (showInterstitial) {
+    return (
+      <WelcomeInterstitial onComplete={() => setShowInterstitial(false)} />
+    );
+  }
   
   return (
     <RootStack.Navigator
@@ -95,8 +98,6 @@ function MainNavigator() {
       }}
     >
       <RootStack.Screen name="Main" component={DrawerNavigator} />
-      <RootStack.Screen name="HistoryDetail" component={HistoryDetailScreen} />
-      <RootStack.Screen name="Support" component={SupportScreen} />
     </RootStack.Navigator>
   );
 }

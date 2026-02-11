@@ -237,7 +237,7 @@ export function PrayScreen() {
         >
           <Ionicons name="menu" size={28} color={colors.text.primary} />
         </Pressable>
-        <Text style={styles.headerTitle}>My Prayers</Text>
+        <Text style={styles.headerTitle}>History</Text>
         <View style={styles.menuButton} />
       </View>
 

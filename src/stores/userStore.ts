@@ -7,18 +7,14 @@ interface UserState {
   id: string | null;
   email: string | null;
   
-  // Streak data
-  currentStreak: number;
-  longestStreak: number;
-  totalSessions: number;
-  
   // First-run flags
   hasCompletedFirstSession: boolean;
+  hasSeenWelcome: boolean;
   
   // Actions
   setUser: (user: { id: string; email: string }) => void;
-  setStreak: (streak: { current_streak: number; longest_streak: number; total_sessions: number }) => void;
   setHasCompletedFirstSession: (value: boolean) => void;
+  setHasSeenWelcome: (value: boolean) => void;
   clearUser: () => void;
 }
 
@@ -28,29 +24,21 @@ export const useUserStore = create<UserState>()(
       // Initial state
       id: null,
       email: null,
-      currentStreak: 0,
-      longestStreak: 0,
-      totalSessions: 0,
       hasCompletedFirstSession: false,
+      hasSeenWelcome: false,
 
       // Actions
       setUser: (user) => set({ id: user.id, email: user.email }),
       
-      setStreak: (streak) => set({
-        currentStreak: streak.current_streak,
-        longestStreak: streak.longest_streak,
-        totalSessions: streak.total_sessions,
-      }),
-      
       setHasCompletedFirstSession: (value) => set({ hasCompletedFirstSession: value }),
+      
+      setHasSeenWelcome: (value) => set({ hasSeenWelcome: value }),
       
       clearUser: () => set({
         id: null,
         email: null,
-        currentStreak: 0,
-        longestStreak: 0,
-        totalSessions: 0,
         hasCompletedFirstSession: false,
+        // Note: Don't reset hasSeenWelcome on sign out - it's a device flag
       }),
     }),
     {

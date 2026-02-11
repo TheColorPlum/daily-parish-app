@@ -29,7 +29,6 @@ import { useTodayStore, useUserStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError, formatReference } from '../lib';
 import { useTheme, spacing, radius, shadow } from '../theme';
-import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
 import { PrayerInput } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -61,13 +60,7 @@ export function TodayScreen() {
   const { 
     hasCompletedFirstSession, 
     setHasCompletedFirstSession,
-    setStreak,
-    currentStreak,
   } = useUserStore();
-
-  // Streak animation
-  const streakValue = useSharedValue(currentStreak);
-  const [displayStreak, setDisplayStreak] = useState(currentStreak);
 
   // Audio player
   const audioPlayer = useAudioPlayer({
@@ -220,33 +213,12 @@ export function TodayScreen() {
       const result = await api.completeSession(token, sessionId);
       
       if (result.success) {
-        const newStreak = result.streak.current_streak;
-        
-        setStreak({
-          current_streak: newStreak,
-          longest_streak: result.streak.longest_streak,
-          total_sessions: newStreak,
-        });
-        
-        const isFirstCompletion = !hasCompletedFirstSession;
-        if (isFirstCompletion) {
+        if (!hasCompletedFirstSession) {
           setHasCompletedFirstSession(true);
-          // For first completion, show new streak immediately (no animation from 0)
-          setDisplayStreak(newStreak);
-          streakValue.value = newStreak;
         }
         
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setScreenState('completed');
-
-        // Delayed streak animation (only if not first completion)
-        if (!isFirstCompletion) {
-          setTimeout(() => {
-            setDisplayStreak(newStreak);
-            streakValue.value = newStreak;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          }, 800);
-        }
       }
     } catch (error) {
       console.error('Failed to complete session:', error);
@@ -427,23 +399,6 @@ export function TodayScreen() {
 
           {/* Divider */}
           <View style={styles.completedDivider} />
-          
-          {/* Streak */}
-          <Text style={styles.streakIntro}>You've prayed</Text>
-          <View style={styles.streakRow}>
-            <RollingCounter
-              value={streakValue}
-              height={44}
-              width={28}
-              fontSize={36}
-              color={colors.text.primary}
-            />
-            <Text style={styles.streakDays}> days</Text>
-          </View>
-          <Text style={styles.streakOutro}>in a row</Text>
-
-          {/* Spacer */}
-          <View style={{ height: 32 }} />
 
           {/* Actions */}
           <Pressable style={styles.completedAction} onPress={() => {
@@ -463,14 +418,6 @@ export function TodayScreen() {
           <Pressable 
             style={styles.completedAction}
             onPress={() => navigation.navigate('History' as never)}
-          >
-            <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.completedActionText}>View history</Text>
-          </Pressable>
-
-          <Pressable 
-            style={styles.completedAction}
-            onPress={() => navigation.navigate('Pray' as never)}
           >
             <Ionicons name="heart-outline" size={20} color={colors.text.secondary} />
             <Text style={styles.completedActionText}>My prayers</Text>
@@ -820,25 +767,6 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     height: 1,
     backgroundColor: colors.border,
     marginVertical: 24,
-  },
-  streakIntro: {
-    fontSize: 15,
-    color: colors.text.muted,
-    marginBottom: 4,
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  streakDays: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: colors.text.primary,
-  },
-  streakOutro: {
-    fontSize: 15,
-    color: colors.text.muted,
-    marginTop: 4,
   },
   completedAction: {
     flexDirection: 'row',
