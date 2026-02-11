@@ -2,6 +2,7 @@ export { ScreenShell } from './ScreenShell';
 export { Button } from './Button';
 export { Card } from './Card';
 export { MonthCalendar } from './MonthCalendar';
+export { PrayerInput } from './PrayerInput';
 export { 
   Text, 
   DisplayLg, 

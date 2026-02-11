@@ -30,6 +30,7 @@ import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError, formatReference } from '../lib';
 import { useTheme, spacing, radius, shadow } from '../theme';
 import { RollingCounter } from '../shared/ui/organisms/rolling-counter';
+import { PrayerInput } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -421,6 +422,9 @@ export function TodayScreen() {
           {/* Message */}
           <Text style={styles.completedTitle}>Go in peace</Text>
 
+          {/* Prayer Input */}
+          <PrayerInput readingId={date} readingDate={date} />
+
           {/* Divider */}
           <View style={styles.completedDivider} />
           
@@ -462,6 +466,14 @@ export function TodayScreen() {
           >
             <Ionicons name="calendar-outline" size={20} color={colors.text.secondary} />
             <Text style={styles.completedActionText}>View history</Text>
+          </Pressable>
+
+          <Pressable 
+            style={styles.completedAction}
+            onPress={() => navigation.navigate('Pray' as never)}
+          >
+            <Ionicons name="heart-outline" size={20} color={colors.text.secondary} />
+            <Text style={styles.completedActionText}>My prayers</Text>
           </Pressable>
         </Animated.View>
       </SafeAreaView>
