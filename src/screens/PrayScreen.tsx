@@ -9,7 +9,7 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DrawerActions, useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
@@ -20,7 +20,6 @@ import { useTheme, spacing, radius } from '../theme';
 type FilterMode = 'active' | 'answered' | 'all';
 
 export function PrayScreen() {
-  const navigation = useNavigation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
 
@@ -227,18 +226,10 @@ export function PrayScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-          hitSlop={16}
-          style={styles.menuButton}
-        >
-          <Ionicons name="menu" size={28} color={colors.text.primary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>History</Text>
-        <View style={styles.menuButton} />
+        <Text style={styles.headerTitle}>Prayers</Text>
       </View>
 
       {/* Filter Tabs */}
@@ -324,20 +315,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       backgroundColor: colors.bg.surface,
     },
     header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.md,
     },
-    menuButton: {
-      width: 40,
-      height: 40,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     headerTitle: {
-      fontSize: 18,
+      fontSize: 28,
       fontWeight: '600',
       color: colors.text.primary,
     },

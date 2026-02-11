@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,12 @@ import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeIn,
   FadeOut,
-  SlideInDown,
+  SlideInUp,
+  SlideOutDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  runOnJS,
 } from 'react-native-reanimated';
 
 import { usePrayerStore } from '../stores';
@@ -25,43 +30,55 @@ interface PrayerInputProps {
   readingDate?: string | null;
 }
 
-type InputState = 'input' | 'saving' | 'saved';
-
-export function PrayerInput({ readingId, readingDate }: PrayerInputProps) {
+export function PrayerInput({ readingId }: PrayerInputProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   
   const [prayerText, setPrayerText] = useState('');
-  const [inputState, setInputState] = useState<InputState>('input');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
-  const { addPrayer, getTodaysPrayers } = usePrayerStore();
-  
-  // Check if user already prayed today
-  const todaysPrayers = getTodaysPrayers();
-  const hasPrayedToday = todaysPrayers.length > 0;
+  const { addPrayer } = usePrayerStore();
   
   const canSave = prayerText.trim().length > 0;
+
+  // Auto-hide toast after 4 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   async function handleSave() {
     if (!canSave) return;
     
     Keyboard.dismiss();
-    setInputState('saving');
+    setIsSaving(true);
     
     try {
       await addPrayer(prayerText, readingId);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setInputState('saved');
+      
+      // Hold for a moment, then show toast and clear
+      setTimeout(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setPrayerText('');
+        setIsSaving(false);
+        setShowToast(true);
+      }, 800);
     } catch (error) {
       console.error('Failed to save prayer:', error);
-      setInputState('input');
+      setIsSaving(false);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   }
 
   async function handleShare() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowToast(false);
     
     try {
       await Share.share({
@@ -72,48 +89,10 @@ export function PrayerInput({ readingId, readingDate }: PrayerInputProps) {
     }
   }
 
-  function handleWriteAnother() {
-    setPrayerText('');
-    setInputState('input');
-    setTimeout(() => inputRef.current?.focus(), 100);
-  }
-
-  // ============================================
-  // SAVED STATE
-  // ============================================
-  if (inputState === 'saved') {
-    return (
-      <Animated.View 
-        entering={FadeIn.duration(400)} 
-        style={styles.container}
-      >
-        <View style={styles.savedContainer}>
-          <Text style={styles.amenText}>Amen.</Text>
-          
-          <Pressable style={styles.shareLink} onPress={handleShare}>
-            <Text style={styles.shareLinkText}>
-              Let someone know you prayed for them
-            </Text>
-            <Ionicons name="arrow-forward" size={16} color={colors.accent} />
-          </Pressable>
-          
-          <Pressable style={styles.writeAnotherLink} onPress={handleWriteAnother}>
-            <Text style={styles.writeAnotherText}>Write another prayer</Text>
-          </Pressable>
-        </View>
-      </Animated.View>
-    );
-  }
-
-  // ============================================
-  // INPUT STATE
-  // ============================================
   return (
-    <Animated.View 
-      entering={SlideInDown.duration(400).springify()} 
-      style={styles.container}
-    >
-      <View style={styles.inputContainer}>
+    <View style={styles.container}>
+      {/* Input Card */}
+      <View style={styles.inputCard}>
         <TextInput
           ref={inputRef}
           style={styles.textInput}
@@ -125,33 +104,55 @@ export function PrayerInput({ readingId, readingDate }: PrayerInputProps) {
           textAlignVertical="top"
           returnKeyType="default"
           blurOnSubmit={false}
-          editable={inputState === 'input'}
+          editable={!isSaving}
         />
         
         <View style={styles.inputFooter}>
-          {hasPrayedToday && (
-            <Text style={styles.prayedTodayHint}>
-              You've prayed {todaysPrayers.length} time{todaysPrayers.length > 1 ? 's' : ''} today
-            </Text>
-          )}
+          <View style={styles.spacer} />
           
           <Pressable
             style={[
-              styles.saveButton,
-              !canSave && styles.saveButtonDisabled,
+              styles.amenButton,
+              !canSave && styles.amenButtonDisabled,
+              isSaving && styles.amenButtonSaving,
             ]}
             onPress={handleSave}
-            disabled={!canSave || inputState === 'saving'}
+            disabled={!canSave || isSaving}
           >
-            {inputState === 'saving' ? (
+            {isSaving ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.saveButtonText}>Amen</Text>
+              <Text style={[
+                styles.amenButtonText,
+                !canSave && styles.amenButtonTextDisabled,
+              ]}>
+                Amen
+              </Text>
             )}
           </Pressable>
         </View>
       </View>
-    </Animated.View>
+      
+      {/* Soft Copy */}
+      <Text style={styles.softCopy}>
+        A prayer, a thought, or nothing at all.
+      </Text>
+
+      {/* Toast */}
+      {showToast && (
+        <Animated.View 
+          entering={SlideInUp.duration(300).springify()}
+          exiting={SlideOutDown.duration(200)}
+          style={styles.toast}
+        >
+          <Text style={styles.toastText}>Amen. 🙏</Text>
+          <Pressable style={styles.toastShareButton} onPress={handleShare}>
+            <Text style={styles.toastShareText}>Share</Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.accent} />
+          </Pressable>
+        </Animated.View>
+      )}
+    </View>
   );
 }
 
@@ -163,81 +164,99 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
   StyleSheet.create({
     container: {
       width: '100%',
-      paddingHorizontal: spacing.lg,
-      marginTop: spacing.xl,
     },
     
-    // Input state
-    inputContainer: {
+    // Input Card
+    inputCard: {
       backgroundColor: colors.bg.elevated,
       borderRadius: radius.lg,
       padding: spacing.md,
-      minHeight: 140,
+      minHeight: 160,
     },
     textInput: {
       flex: 1,
       fontSize: 17,
       lineHeight: 24,
       color: colors.text.primary,
-      minHeight: 80,
+      minHeight: 100,
       paddingTop: 0,
     },
     inputFooter: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       alignItems: 'center',
       marginTop: spacing.sm,
     },
-    prayedTodayHint: {
-      fontSize: 13,
-      color: colors.text.muted,
+    spacer: {
       flex: 1,
     },
-    saveButton: {
+    amenButton: {
       backgroundColor: colors.accent,
       paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.lg,
+      paddingHorizontal: spacing.xl,
       borderRadius: radius.md,
-      minWidth: 80,
+      minWidth: 90,
       alignItems: 'center',
     },
-    saveButtonDisabled: {
+    amenButtonDisabled: {
       backgroundColor: colors.bg.subtle,
     },
-    saveButtonText: {
-      fontSize: 15,
+    amenButtonSaving: {
+      backgroundColor: colors.accent,
+      opacity: 0.8,
+    },
+    amenButtonText: {
+      fontSize: 16,
       fontWeight: '600',
       color: '#FFFFFF',
     },
+    amenButtonTextDisabled: {
+      color: colors.text.muted,
+    },
     
-    // Saved state
-    savedContainer: {
-      alignItems: 'center',
-      paddingVertical: spacing.lg,
-    },
-    amenText: {
-      fontSize: 28,
-      fontWeight: '600',
+    // Soft Copy
+    softCopy: {
+      fontSize: 14,
+      color: colors.text.muted,
       fontStyle: 'italic',
-      color: colors.text.primary,
-      marginBottom: spacing.lg,
+      textAlign: 'center',
+      marginTop: spacing.md,
+      paddingHorizontal: spacing.lg,
     },
-    shareLink: {
+
+    // Toast
+    toast: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.bg.elevated,
+      borderRadius: radius.lg,
+      padding: spacing.md,
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: spacing.md,
+      justifyContent: 'space-between',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 5,
     },
-    shareLinkText: {
+    toastText: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: colors.text.primary,
+    },
+    toastShareButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+    },
+    toastShareText: {
       fontSize: 15,
       color: colors.accent,
+      fontWeight: '500',
       marginRight: spacing.xs,
-    },
-    writeAnotherLink: {
-      paddingVertical: spacing.md,
-      marginTop: spacing.sm,
-    },
-    writeAnotherText: {
-      fontSize: 15,
-      color: colors.text.muted,
     },
   });

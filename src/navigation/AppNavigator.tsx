@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuth } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   WelcomeScreen,
   WelcomeInterstitial,
   TodayScreen,
   PrayScreen,
   SettingsScreen,
-  SupportScreen,
 } from '../screens';
-import { DrawerContent } from './DrawerContent';
+// Note: Support/Donate can be added later as needed
 import { useUserLoader } from '../hooks';
 import { useUserStore } from '../stores';
 import { useTheme } from '../theme';
@@ -21,11 +23,10 @@ export type AuthStackParamList = {
   Welcome: undefined;
 };
 
-export type DrawerParamList = {
+export type TabParamList = {
   Today: undefined;
-  History: undefined;  // Prayer journal
+  Prayers: undefined;
   Settings: undefined;
-  Support: undefined;
 };
 
 export type RootStackParamList = {
@@ -34,7 +35,7 @@ export type RootStackParamList = {
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const RootStack = createNativeStackNavigator<RootStackParamList>();
-const Drawer = createDrawerNavigator<DrawerParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 function AuthNavigator() {
   const { colors } = useTheme();
@@ -51,26 +52,52 @@ function AuthNavigator() {
   );
 }
 
-function DrawerNavigator() {
+function TabNavigator() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   
   return (
-    <Drawer.Navigator
-      drawerContent={(props) => <DrawerContent {...props} />}
-      screenOptions={{
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
         headerShown: false,
-        drawerStyle: {
-          backgroundColor: colors.bg.surface,
-          width: 280,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+          
+          if (route.name === 'Today') {
+            iconName = focused ? 'today' : 'today-outline';
+          } else if (route.name === 'Prayers') {
+            iconName = focused ? 'heart' : 'heart-outline';
+          } else {
+            iconName = focused ? 'settings' : 'settings-outline';
+          }
+          
+          return <Ionicons name={iconName} size={size} color={color} />;
         },
-        sceneStyle: { backgroundColor: colors.bg.surface },
-      }}
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.text.muted,
+        tabBarStyle: {
+          backgroundColor: colors.bg.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          paddingTop: 8,
+          height: 56 + insets.bottom,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '500',
+        },
+      })}
     >
-      <Drawer.Screen name="Today" component={TodayScreen} />
-      <Drawer.Screen name="History" component={PrayScreen} />
-      <Drawer.Screen name="Settings" component={SettingsScreen} />
-      <Drawer.Screen name="Support" component={SupportScreen} />
-    </Drawer.Navigator>
+      <Tab.Screen name="Today" component={TodayScreen} />
+      <Tab.Screen name="Prayers" component={PrayScreen} />
+      <Tab.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          tabBarLabel: () => null, // Icon only
+        }}
+      />
+    </Tab.Navigator>
   );
 }
 
@@ -97,7 +124,7 @@ function MainNavigator() {
         animation: 'slide_from_right',
       }}
     >
-      <RootStack.Screen name="Main" component={DrawerNavigator} />
+      <RootStack.Screen name="Main" component={TabNavigator} />
     </RootStack.Navigator>
   );
 }

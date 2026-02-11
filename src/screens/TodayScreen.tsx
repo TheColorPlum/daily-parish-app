@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -8,12 +8,11 @@ import {
   Modal,
   ScrollView,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
-import type { DrawerParamList } from '../navigation/AppNavigator';
 import { useAuth } from '@clerk/clerk-expo';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -34,12 +33,11 @@ import { PrayerInput } from '../components';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function TodayScreen() {
-  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { getToken } = useAuth();
-  const [isCompletingSession, setIsCompletingSession] = useState(false);
   const [showReading, setShowReading] = useState(false);
+  const [audioExpanded, setAudioExpanded] = useState(true);
   
   // Stores
   const { 
@@ -68,7 +66,7 @@ export function TodayScreen() {
   });
 
   // Progress animation for scrubbing
-  const progressBarWidth = SCREEN_WIDTH - 64;
+  const progressBarWidth = SCREEN_WIDTH - 80;
   const progress = useSharedValue(0);
 
   // Sync progress with audio
@@ -80,10 +78,6 @@ export function TodayScreen() {
 
   const progressStyle = useAnimatedStyle(() => ({
     width: `${progress.value}%`,
-  }));
-
-  const knobStyle = useAnimatedStyle(() => ({
-    left: `${progress.value}%`,
   }));
 
   // Scrubbing gestures
@@ -114,22 +108,9 @@ export function TodayScreen() {
   const combinedGesture = Gesture.Race(scrubGesture, tapGesture);
 
   function handleSeek(position: number) {
-    // position is 0-1, seekTo expects milliseconds
     const positionMs = position * audioPlayer.duration;
     audioPlayer.seekTo(positionMs);
   }
-
-  const formatTime = (millis: number) => {
-    const totalSeconds = Math.floor(millis / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const getFormattedRemaining = () => {
-    const remaining = audioPlayer.duration - audioPlayer.position;
-    return formatTime(remaining);
-  };
 
   // Refresh when app comes to foreground on new day
   useAppStateRefresh(loadTodayData);
@@ -141,7 +122,7 @@ export function TodayScreen() {
 
   // Load audio when URL is available
   useEffect(() => {
-    if (audioUrl && (screenState === 'ready' || screenState === 'playing')) {
+    if (audioUrl && screenState === 'ready') {
       audioPlayer.loadAudio(audioUrl);
     }
   }, [audioUrl, screenState]);
@@ -175,12 +156,10 @@ export function TodayScreen() {
         audioUrl: readings.audio_unified_url,
       });
 
-      if ('already_completed' in session && session.already_completed) {
-        setScreenState('completed');
-      } else if (session.session_id) {
+      if (session.session_id) {
         setSessionId(session.session_id);
-        setScreenState('ready');
       }
+      setScreenState('ready');
     } catch (error) {
       console.error('Failed to load today data:', error);
       if (error instanceof ApiError) {
@@ -198,65 +177,48 @@ export function TodayScreen() {
   }
 
   async function handleAudioComplete() {
-    if (screenState === 'completed' || isCompletingSession) return;
-    await completeSession();
+    // Mark session as completed on server
+    if (sessionId) {
+      try {
+        const token = await getToken();
+        if (token) {
+          await api.completeSession(token, sessionId);
+        }
+      } catch (error) {
+        console.error('Failed to complete session:', error);
+      }
+    }
+    
+    if (!hasCompletedFirstSession) {
+      setHasCompletedFirstSession(true);
+    }
+    
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
-  const completeSession = useCallback(async () => {
-    if (!sessionId || isCompletingSession) return;
-    
-    setIsCompletingSession(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
-
-      const result = await api.completeSession(token, sessionId);
-      
-      if (result.success) {
-        if (!hasCompletedFirstSession) {
-          setHasCompletedFirstSession(true);
-        }
-        
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        setScreenState('completed');
-      }
-    } catch (error) {
-      console.error('Failed to complete session:', error);
-      setScreenState('completed');
-    } finally {
-      setIsCompletingSession(false);
-    }
-  }, [sessionId, isCompletingSession, getToken, hasCompletedFirstSession]);
-
   function handlePlayPause() {
-    // If no audio URL, open reading modal instead
     if (!audioUrl) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setShowReading(true);
       return;
     }
     
-    // Don't try to play if audio isn't loaded yet
     if (!audioPlayer.isLoaded) {
       return;
     }
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     audioPlayer.togglePlayback();
-    
-    if (!hasCompletedFirstSession && !audioPlayer.isPlaying) {
-      setHasCompletedFirstSession(true);
-    }
-    
-    if (screenState === 'ready' && !audioPlayer.isPlaying) {
-      setScreenState('playing');
-    }
   }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '';
     const d = new Date(dateString + 'T12:00:00');
-    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return d.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   const getGreeting = () => {
@@ -266,20 +228,12 @@ export function TodayScreen() {
     return 'Good evening';
   };
 
-  const getScriptureTeaser = () => {
-    if (firstReading?.text) {
-      const words = firstReading.text.split(' ').slice(0, 8).join(' ');
-      return `"${words}..."`;
-    }
-    return '';
-  };
-
   // ============================================
   // LOADING STATE
   // ============================================
   if (screenState === 'loading') {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={styles.loadingText}>Loading...</Text>
@@ -293,17 +247,9 @@ export function TodayScreen() {
   // ============================================
   if (screenState === 'error') {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Pressable 
-            style={styles.menuButton}
-            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-          >
-            <Ionicons name="menu" size={24} color={colors.text.secondary} />
-          </Pressable>
-          <View style={{ width: 44 }} />
-        </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.text.muted} />
           <Text style={styles.errorText}>
             {useTodayStore.getState().errorMessage || 'Something went wrong.'}
           </Text>
@@ -316,122 +262,10 @@ export function TodayScreen() {
   }
 
   // ============================================
-  // COMPLETED STATE
-  // ============================================
-  if (screenState === 'completed') {
-    return (
-      <SafeAreaView style={styles.container}>
-        {/* Reading Modal */}
-        <Modal
-          visible={showReading}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowReading(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Today's Reading</Text>
-              <Pressable onPress={() => setShowReading(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
-              </Pressable>
-            </View>
-            <ScrollView 
-              style={styles.modalScroll}
-              contentContainerStyle={styles.modalContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {firstReading && (
-                <>
-                  <Text style={styles.scriptureRef}>{formatReference(firstReading.reference)}</Text>
-                  <Text style={styles.scriptureText}>{firstReading.text}</Text>
-                </>
-              )}
-              {responsorialPsalm && (
-                <>
-                  <View style={styles.modalDivider} />
-                  <Text style={styles.scriptureRef}>{formatReference(responsorialPsalm.reference)}</Text>
-                  {responsorialPsalm.text ? (
-                    <Text style={styles.scriptureText}>{responsorialPsalm.text}</Text>
-                  ) : null}
-                </>
-              )}
-              {gospel && (
-                <>
-                  <View style={styles.modalDivider} />
-                  <Text style={styles.scriptureRef}>{formatReference(gospel.reference)}</Text>
-                  <Text style={styles.scriptureText}>{gospel.text}</Text>
-                </>
-              )}
-              {commentary && (
-                <>
-                  <View style={styles.modalDivider} />
-                  <Text style={styles.commentaryLabel}>Commentary</Text>
-                  <Text style={styles.commentaryText}>{commentary}</Text>
-                </>
-              )}
-              <View style={{ height: 40 }} />
-            </ScrollView>
-          </View>
-        </Modal>
-
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable 
-            style={styles.menuButton}
-            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-          >
-            <Ionicons name="menu" size={24} color={colors.text.secondary} />
-          </Pressable>
-          <View style={{ width: 44 }} />
-        </View>
-
-        <Animated.View entering={FadeIn.duration(600)} style={styles.completedContainer}>
-          {/* Checkmark */}
-          <View style={styles.checkCircle}>
-            <Ionicons name="checkmark" size={48} color={colors.accent} />
-          </View>
-
-          {/* Message */}
-          <Text style={styles.completedTitle}>Go in peace</Text>
-
-          {/* Prayer Input */}
-          <PrayerInput readingId={date} readingDate={date} />
-
-          {/* Divider */}
-          <View style={styles.completedDivider} />
-
-          {/* Actions */}
-          <Pressable style={styles.completedAction} onPress={() => {
-            // Reset for replay
-            setScreenState('ready');
-            audioPlayer.seekTo(0);
-          }}>
-            <Ionicons name="refresh-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.completedActionText}>Replay</Text>
-          </Pressable>
-
-          <Pressable style={styles.completedAction} onPress={() => setShowReading(true)}>
-            <Ionicons name="document-text-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.completedActionText}>Read scripture</Text>
-          </Pressable>
-
-          <Pressable 
-            style={styles.completedAction}
-            onPress={() => navigation.navigate('History' as never)}
-          >
-            <Ionicons name="heart-outline" size={20} color={colors.text.secondary} />
-            <Text style={styles.completedActionText}>My prayers</Text>
-          </Pressable>
-        </Animated.View>
-      </SafeAreaView>
-    );
-  }
-
-  // ============================================
-  // READY / PLAYING STATE (Audio-First)
+  // MAIN SCREEN - Audio + Prayer side by side
   // ============================================
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Reading Modal */}
       <Modal
         visible={showReading}
@@ -461,9 +295,9 @@ export function TodayScreen() {
               <>
                 <View style={styles.modalDivider} />
                 <Text style={styles.scriptureRef}>{formatReference(responsorialPsalm.reference)}</Text>
-                {responsorialPsalm.text ? (
+                {responsorialPsalm.text && (
                   <Text style={styles.scriptureText}>{responsorialPsalm.text}</Text>
-                ) : null}
+                )}
               </>
             )}
             {gospel && (
@@ -485,103 +319,104 @@ export function TodayScreen() {
         </View>
       </Modal>
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable 
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Ionicons name="menu" size={24} color={colors.text.secondary} />
-        </Pressable>
-        <View style={{ width: 44 }} />
-      </View>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.date}>{formatDate(date)}</Text>
+          </View>
 
-      {/* Main Content */}
-      <View style={styles.mainContent}>
-        {/* Greeting */}
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <Text style={styles.date}>{formatDate(date)}</Text>
-
-        {/* Play Button */}
-        <View style={styles.playerSection}>
-          <Pressable 
-            onPress={handlePlayPause}
-            style={[styles.playButton, !audioUrl && styles.readButton]}
-          >
-            {audioUrl && (!audioPlayer.isLoaded || audioPlayer.isBuffering) ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : audioUrl ? (
-              <Ionicons 
-                name={audioPlayer.isPlaying ? "pause" : "play"} 
-                size={44} 
-                color="#FFFFFF" 
-                style={!audioPlayer.isPlaying ? { marginLeft: 4 } : {}}
-              />
-            ) : (
-              <Ionicons name="book-outline" size={40} color="#FFFFFF" />
-            )}
-          </Pressable>
-
-          <Text style={styles.prayerTitle}>Today's Prayer</Text>
-          <Text style={styles.duration}>
-            {!audioUrl 
-              ? 'Tap to read'
-              : audioPlayer.isPlaying 
-                ? `${getFormattedRemaining()} remaining`
-                : audioPlayer.formattedDuration || '~5 min'
-            }
-          </Text>
-        </View>
-
-        {/* Progress Bar - only show if audio available */}
-        {audioUrl ? (
-          <View style={styles.progressSection}>
-            <GestureDetector gesture={combinedGesture}>
-              <View style={styles.progressTouchArea}>
-                <View style={styles.progressTrack}>
-                  <Animated.View style={[styles.progressFill, progressStyle]} />
-                  <Animated.View style={[styles.progressKnob, knobStyle]} />
+          {/* Audio Card */}
+          <View style={styles.audioCard}>
+            <Pressable 
+              style={styles.audioCardHeader}
+              onPress={() => {
+                if (audioPlayer.isLoaded) {
+                  setAudioExpanded(!audioExpanded);
+                } else {
+                  handlePlayPause();
+                }
+              }}
+            >
+              <View style={styles.audioCardLeft}>
+                <Pressable 
+                  style={styles.playButton}
+                  onPress={handlePlayPause}
+                >
+                  {!audioUrl ? (
+                    <Ionicons name="book-outline" size={24} color="#FFFFFF" />
+                  ) : !audioPlayer.isLoaded || audioPlayer.isBuffering ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Ionicons 
+                      name={audioPlayer.isPlaying ? "pause" : "play"} 
+                      size={24} 
+                      color="#FFFFFF" 
+                      style={!audioPlayer.isPlaying ? { marginLeft: 2 } : {}}
+                    />
+                  )}
+                </Pressable>
+                <View style={styles.audioCardInfo}>
+                  <Text style={styles.audioCardTitle}>Today's Reading</Text>
+                  <Text style={styles.audioCardDuration}>
+                    {!audioUrl 
+                      ? 'Tap to read'
+                      : audioPlayer.isPlaying 
+                        ? `${audioPlayer.formattedPosition} / ${audioPlayer.formattedDuration}`
+                        : audioPlayer.formattedDuration || '~5 min'
+                    }
+                  </Text>
                 </View>
               </View>
-            </GestureDetector>
-            <View style={styles.progressTimes}>
-              <Text style={styles.progressTime}>{audioPlayer.formattedPosition || '0:00'}</Text>
-              <Text style={styles.progressTime}>{audioPlayer.formattedDuration || '0:00'}</Text>
-            </View>
+              {audioUrl && audioPlayer.isLoaded && (
+                <Ionicons 
+                  name={audioExpanded ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color={colors.text.muted} 
+                />
+              )}
+            </Pressable>
+
+            {/* Progress Bar (expanded) */}
+            {audioUrl && audioExpanded && audioPlayer.isLoaded && (
+              <Animated.View entering={FadeIn.duration(200)} style={styles.progressSection}>
+                <GestureDetector gesture={combinedGesture}>
+                  <View style={styles.progressTouchArea}>
+                    <View style={styles.progressTrack}>
+                      <Animated.View style={[styles.progressFill, progressStyle]} />
+                    </View>
+                  </View>
+                </GestureDetector>
+                <Pressable 
+                  style={styles.seeReadingLink}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowReading(true);
+                  }}
+                >
+                  <Text style={styles.seeReadingText}>See full reading</Text>
+                  <Ionicons name="chevron-forward" size={14} color={colors.accent} />
+                </Pressable>
+              </Animated.View>
+            )}
           </View>
-        ) : (
-          <View style={styles.noAudioSpacer} />
-        )}
 
-        {/* Scripture Teaser */}
-        <View style={styles.teaserSection}>
-          <Text style={styles.teaserText}>{getScriptureTeaser()}</Text>
-          
-          <Pressable 
-            style={styles.seeFullReading}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowReading(true);
-            }}
-          >
-            <Text style={styles.seeFullReadingText}>See full reading</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-          </Pressable>
-        </View>
-
-        {/* Mark Complete button - for read-only mode */}
-        {!audioUrl && (
-          <Pressable 
-            style={styles.markCompleteButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              completeSession();
-            }}
-          >
-            <Text style={styles.markCompleteText}>Mark as complete</Text>
-          </Pressable>
-        )}
-      </View>
+          {/* Prayer Input */}
+          <View style={styles.prayerSection}>
+            <PrayerInput readingId={date} readingDate={date} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -595,81 +430,78 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flex: 1,
     backgroundColor: colors.bg.surface,
   },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
   
   // Header
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
   },
-  menuButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-
-  // Main Content
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 32,
-    justifyContent: 'center',
-  },
-
-  // Greeting
   greeting: {
     fontSize: 28,
     fontWeight: '600',
     color: colors.text.primary,
-    textAlign: 'center',
     letterSpacing: -0.5,
   },
   date: {
     fontSize: 17,
     color: colors.text.muted,
-    textAlign: 'center',
     marginTop: 4,
-    marginBottom: 48,
   },
 
-  // Player
-  playerSection: {
+  // Audio Card
+  audioCard: {
+    backgroundColor: colors.bg.elevated,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+  },
+  audioCardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'space-between',
+    padding: spacing.md,
+  },
+  audioCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   playButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    ...shadow.medium,
+    ...shadow.subtle,
   },
-  readButton: {
-    // Same as playButton but could customize if needed
+  audioCardInfo: {
+    marginLeft: spacing.md,
+    flex: 1,
   },
-  noAudioSpacer: {
-    height: 60,
-    marginBottom: 40,
-  },
-  prayerTitle: {
-    fontSize: 20,
+  audioCardTitle: {
+    fontSize: 17,
     fontWeight: '600',
     color: colors.text.primary,
-    marginBottom: 4,
   },
-  duration: {
-    fontSize: 15,
+  audioCardDuration: {
+    fontSize: 14,
     color: colors.text.muted,
+    marginTop: 2,
   },
-
-  // Progress
   progressSection: {
-    marginBottom: 40,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   progressTouchArea: {
     height: 24,
@@ -679,104 +511,56 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.bg.subtle,
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 2,
     backgroundColor: colors.accent,
   },
-  progressKnob: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.accent,
-    top: -6,
-    marginLeft: -8,
-    ...shadow.subtle,
-  },
-  progressTimes: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  progressTime: {
-    fontSize: 13,
-    color: colors.text.muted,
-  },
-
-  // Teaser
-  teaserSection: {
-    alignItems: 'center',
-  },
-  teaserText: {
-    fontSize: 17,
-    fontStyle: 'italic',
-    color: colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    marginBottom: 16,
-  },
-  seeFullReading: {
+  seeReadingLink: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: spacing.sm,
   },
-  seeFullReadingText: {
-    fontSize: 15,
-    fontWeight: '500',
+  seeReadingText: {
+    fontSize: 14,
     color: colors.accent,
-  },
-  markCompleteButton: {
-    marginTop: 32,
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    backgroundColor: colors.accent,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-  },
-  markCompleteText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '500',
   },
 
-  // Completed State
-  completedContainer: {
+  // Prayer Section
+  prayerSection: {
+    flex: 1,
+  },
+
+  // Loading & Error
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
-  checkCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.accentSoft,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+  loadingText: {
+    fontSize: 15,
+    color: colors.text.muted,
+    marginTop: spacing.lg,
   },
-  completedTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: colors.text.primary,
-  },
-  completedDivider: {
-    width: 48,
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 24,
-  },
-  completedAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  completedActionText: {
-    fontSize: 17,
+  errorText: {
+    fontSize: 16,
     color: colors.text.secondary,
-    marginLeft: 12,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  retryText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.accent,
   },
 
   // Modal
@@ -819,25 +603,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginBottom: 16,
   },
   scriptureText: {
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 'Georgia',
     fontStyle: 'italic',
-    lineHeight: 34,
+    lineHeight: 32,
     color: colors.text.scripture,
-  },
-  psalmLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    color: colors.text.muted,
-    marginBottom: 8,
-  },
-  psalmText: {
-    fontSize: 18,
-    fontFamily: 'Georgia',
-    lineHeight: 28,
-    color: colors.text.primary,
   },
   modalDivider: {
     height: 1,
@@ -856,33 +626,5 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     fontSize: 17,
     lineHeight: 28,
     color: colors.text.primary,
-  },
-
-  // Loading & Error
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 15,
-    color: colors.text.muted,
-    marginTop: spacing.lg,
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.xl,
-  },
-  retryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  retryText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.accent,
   },
 });

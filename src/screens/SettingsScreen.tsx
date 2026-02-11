@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert, Platform } from 'react-native';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
-import type { DrawerParamList } from '../navigation/AppNavigator';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -24,7 +21,6 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 ];
 
 export function SettingsScreen() {
-  const navigation = useNavigation<DrawerNavigationProp<DrawerParamList>>();
   const { colors, mode, setMode } = useTheme();
   const [showTimePicker, setShowTimePicker] = useState(false);
   
@@ -103,16 +99,9 @@ export function SettingsScreen() {
   const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-        >
-          <Ionicons name="menu" size={24} color={colors.text.primary} />
-        </TouchableOpacity>
-        
         <Text style={styles.title}>Settings</Text>
       </View>
 
