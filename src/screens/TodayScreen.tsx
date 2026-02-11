@@ -24,11 +24,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
-import { useTodayStore, useUserStore } from '../stores';
+import { useTodayStore, useUserStore, useSettingsStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
-import { api, ApiError, formatReference } from '../lib';
+import { api, ApiError, formatReference, checkNotificationPermissions } from '../lib';
 import { useTheme, spacing, radius, shadow } from '../theme';
-import { PrayerInput } from '../components';
+import { PrayerInput, NotificationPrompt } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -38,6 +38,9 @@ export function TodayScreen() {
   const { getToken } = useAuth();
   const [showReading, setShowReading] = useState(false);
   const [audioExpanded, setAudioExpanded] = useState(true);
+  const [audioCompleted, setAudioCompleted] = useState(false);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [hasCheckedNotifications, setHasCheckedNotifications] = useState(false);
   
   // Stores
   const { 
@@ -58,7 +61,35 @@ export function TodayScreen() {
   const { 
     hasCompletedFirstSession, 
     setHasCompletedFirstSession,
+    hasCompletedFirstPrayer,
+    sessionCount,
+    incrementSessionCount,
   } = useUserStore();
+  
+  const { notificationPermissionGranted, dailyReminderEnabled } = useSettingsStore();
+
+  // Check if we should show notification prompt
+  // Show after: second session OR first prayer, AND notifications not already enabled
+  useEffect(() => {
+    async function checkNotificationPrompt() {
+      if (hasCheckedNotifications) return;
+      if (notificationPermissionGranted || dailyReminderEnabled) return;
+      
+      const alreadyGranted = await checkNotificationPermissions();
+      if (alreadyGranted) return;
+      
+      // Show prompt after second session or first prayer
+      const shouldShow = sessionCount >= 2 || hasCompletedFirstPrayer;
+      if (shouldShow) {
+        setShowNotificationPrompt(true);
+      }
+      setHasCheckedNotifications(true);
+    }
+    
+    if (screenState === 'ready') {
+      checkNotificationPrompt();
+    }
+  }, [screenState, sessionCount, hasCompletedFirstPrayer, notificationPermissionGranted, dailyReminderEnabled]);
 
   // Audio player
   const audioPlayer = useAudioPlayer({
@@ -177,6 +208,12 @@ export function TodayScreen() {
   }
 
   async function handleAudioComplete() {
+    // Mark audio as completed (show badge)
+    setAudioCompleted(true);
+    
+    // Increment session count for notification prompt timing
+    incrementSessionCount();
+    
     // Mark session as completed on server
     if (sessionId) {
       try {
@@ -193,6 +230,7 @@ export function TodayScreen() {
       setHasCompletedFirstSession(true);
     }
     
+    // Gentle haptic on completion
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
@@ -367,7 +405,12 @@ export function TodayScreen() {
                   )}
                 </Pressable>
                 <View style={styles.audioCardInfo}>
-                  <Text style={styles.audioCardTitle}>Today's Reading</Text>
+                  <View style={styles.audioCardTitleRow}>
+                    <Text style={styles.audioCardTitle}>Today's Reading</Text>
+                    {audioCompleted && (
+                      <Ionicons name="checkmark-circle" size={18} color={colors.accent} style={styles.completedBadge} />
+                    )}
+                  </View>
                   <Text style={styles.audioCardDuration}>
                     {!audioUrl 
                       ? 'Tap to read'
@@ -415,6 +458,11 @@ export function TodayScreen() {
           <View style={styles.prayerSection}>
             <PrayerInput readingId={date} readingDate={date} />
           </View>
+
+          {/* Notification Prompt (shown once, after second session or first prayer) */}
+          {showNotificationPrompt && (
+            <NotificationPrompt onDismiss={() => setShowNotificationPrompt(false)} />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -489,10 +537,17 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginLeft: spacing.md,
     flex: 1,
   },
+  audioCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   audioCardTitle: {
     fontSize: 17,
     fontWeight: '600',
     color: colors.text.primary,
+  },
+  completedBadge: {
+    marginLeft: spacing.xs,
   },
   audioCardDuration: {
     fontSize: 14,

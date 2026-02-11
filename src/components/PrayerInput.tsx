@@ -16,13 +16,9 @@ import Animated, {
   FadeOut,
   SlideInUp,
   SlideOutDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 
-import { usePrayerStore } from '../stores';
+import { usePrayerStore, useUserStore } from '../stores';
 import { useTheme, spacing, radius } from '../theme';
 
 interface PrayerInputProps {
@@ -37,9 +33,17 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
   const [prayerText, setPrayerText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isFirstPrayer, setIsFirstPrayer] = useState(false);
+  const [showSaveMessage, setShowSaveMessage] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
   const { addPrayer } = usePrayerStore();
+  const { 
+    hasCompletedFirstPrayer, 
+    setHasCompletedFirstPrayer,
+    hasSeenSaveMessage,
+    setHasSeenSaveMessage,
+  } = useUserStore();
   
   const canSave = prayerText.trim().length > 0;
 
@@ -48,6 +52,8 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
     if (showToast) {
       const timer = setTimeout(() => {
         setShowToast(false);
+        setIsFirstPrayer(false);
+        setShowSaveMessage(false);
       }, 4000);
       return () => clearTimeout(timer);
     }
@@ -59,6 +65,10 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
     Keyboard.dismiss();
     setIsSaving(true);
     
+    // Check if this is the first prayer before saving
+    const willBeFirstPrayer = !hasCompletedFirstPrayer;
+    const shouldShowSaveMessage = !hasSeenSaveMessage;
+    
     try {
       await addPrayer(prayerText, readingId);
       
@@ -67,6 +77,19 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPrayerText('');
         setIsSaving(false);
+        
+        // Set first prayer state for toast message
+        if (willBeFirstPrayer) {
+          setIsFirstPrayer(true);
+          setHasCompletedFirstPrayer(true);
+        }
+        
+        // Show one-time save message
+        if (shouldShowSaveMessage) {
+          setShowSaveMessage(true);
+          setHasSeenSaveMessage(true);
+        }
+        
         setShowToast(true);
       }, 800);
     } catch (error) {
@@ -88,6 +111,14 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
       console.error('Share failed:', error);
     }
   }
+
+  // Get the appropriate toast message
+  const getToastMessage = () => {
+    if (isFirstPrayer) {
+      return 'Your first prayer. Welcome. 🙏';
+    }
+    return 'Amen. 🙏';
+  };
 
   return (
     <View style={styles.container}>
@@ -145,7 +176,12 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
           exiting={SlideOutDown.duration(200)}
           style={styles.toast}
         >
-          <Text style={styles.toastText}>Amen. 🙏</Text>
+          <View style={styles.toastContent}>
+            <Text style={styles.toastText}>{getToastMessage()}</Text>
+            {showSaveMessage && (
+              <Text style={styles.toastSubtext}>Saved to Prayers. Only on this device.</Text>
+            )}
+          </View>
           <Pressable style={styles.toastShareButton} onPress={handleShare}>
             <Text style={styles.toastShareText}>Share</Text>
             <Ionicons name="arrow-forward" size={14} color={colors.accent} />
@@ -242,10 +278,18 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       shadowRadius: 8,
       elevation: 5,
     },
+    toastContent: {
+      flex: 1,
+    },
     toastText: {
       fontSize: 17,
       fontWeight: '600',
       color: colors.text.primary,
+    },
+    toastSubtext: {
+      fontSize: 13,
+      color: colors.text.muted,
+      marginTop: 2,
     },
     toastShareButton: {
       flexDirection: 'row',
