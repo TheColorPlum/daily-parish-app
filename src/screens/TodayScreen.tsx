@@ -52,6 +52,8 @@ export function TodayScreen() {
     audioUrl,
     sessionId,
     screenState,
+    season,
+    feast,
     setReadings,
     setSessionId,
     setScreenState,
@@ -185,6 +187,9 @@ export function TodayScreen() {
         gospel: readings.gospel,
         commentary: readings.commentary_unified,
         audioUrl: readings.audio_unified_url,
+        // Liturgical calendar (when available from API)
+        season: readings.season,
+        feast: readings.feast,
       });
 
       if (session.session_id) {
@@ -372,6 +377,9 @@ export function TodayScreen() {
           <View style={styles.header}>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.date}>{formatDate(date)}</Text>
+            {(feast || season) && (
+              <Text style={styles.liturgicalInfo}>{feast || season}</Text>
+            )}
           </View>
 
           {/* Audio Card */}
@@ -504,6 +512,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     fontSize: 17,
     color: colors.text.muted,
     marginTop: 4,
+  },
+  liturgicalInfo: {
+    fontSize: 15,
+    color: colors.accent,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 
   // Audio Card

@@ -18,13 +18,24 @@ import Animated, {
   SlideOutDown,
 } from 'react-native-reanimated';
 
-import { usePrayerStore, useUserStore } from '../stores';
+import { usePrayerStore, useUserStore, MilestoneType } from '../stores';
 import { useTheme, spacing, radius } from '../theme';
 
 interface PrayerInputProps {
   readingId?: string | null;
   readingDate?: string | null;
 }
+
+// Milestone toast messages (waiting on Draper for final copy)
+const MILESTONE_MESSAGES: Record<MilestoneType, string> = {
+  '1_day': 'Your first prayer. Welcome. 🙏',
+  '2_days': 'Two days. You came back.',
+  '1_week': 'One week. A practice begins.',
+  '2_weeks': 'Two weeks of prayer.',
+  '1_month': 'One month. This is yours now.',
+  '6_months': 'Six months. A quiet rhythm.',
+  '1_year': 'One year. 🙏',
+};
 
 export function PrayerInput({ readingId }: PrayerInputProps) {
   const { colors } = useTheme();
@@ -33,31 +44,31 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
   const [prayerText, setPrayerText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [isFirstPrayer, setIsFirstPrayer] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Amen. 🙏');
   const [showSaveMessage, setShowSaveMessage] = useState(false);
+  const [isMilestoneToast, setIsMilestoneToast] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
-  const { addPrayer } = usePrayerStore();
+  const { addPrayer, getUnseenMilestone, markMilestoneSeen } = usePrayerStore();
   const { 
-    hasCompletedFirstPrayer, 
-    setHasCompletedFirstPrayer,
     hasSeenSaveMessage,
     setHasSeenSaveMessage,
   } = useUserStore();
   
   const canSave = prayerText.trim().length > 0;
 
-  // Auto-hide toast after 4 seconds
+  // Auto-hide toast after delay (longer for milestones)
   useEffect(() => {
     if (showToast) {
+      const delay = isMilestoneToast ? 5000 : 4000;
       const timer = setTimeout(() => {
         setShowToast(false);
-        setIsFirstPrayer(false);
         setShowSaveMessage(false);
-      }, 4000);
+        setIsMilestoneToast(false);
+      }, delay);
       return () => clearTimeout(timer);
     }
-  }, [showToast]);
+  }, [showToast, isMilestoneToast]);
 
   async function handleSave() {
     if (!canSave) return;
@@ -65,12 +76,13 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
     Keyboard.dismiss();
     setIsSaving(true);
     
-    // Check if this is the first prayer before saving
-    const willBeFirstPrayer = !hasCompletedFirstPrayer;
     const shouldShowSaveMessage = !hasSeenSaveMessage;
     
     try {
       await addPrayer(prayerText, readingId);
+      
+      // Check for milestone after saving
+      const milestone = getUnseenMilestone();
       
       // Hold for a moment, then show toast and clear
       setTimeout(() => {
@@ -78,14 +90,18 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
         setPrayerText('');
         setIsSaving(false);
         
-        // Set first prayer state for toast message
-        if (willBeFirstPrayer) {
-          setIsFirstPrayer(true);
-          setHasCompletedFirstPrayer(true);
+        // Set toast message based on milestone
+        if (milestone) {
+          setToastMessage(MILESTONE_MESSAGES[milestone.type]);
+          setIsMilestoneToast(true);
+          markMilestoneSeen(milestone.type);
+        } else {
+          setToastMessage('Amen. 🙏');
+          setIsMilestoneToast(false);
         }
         
-        // Show one-time save message
-        if (shouldShowSaveMessage) {
+        // Show one-time save message (only on first prayer, not milestones)
+        if (shouldShowSaveMessage && !milestone) {
           setShowSaveMessage(true);
           setHasSeenSaveMessage(true);
         }
@@ -111,14 +127,6 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
       console.error('Share failed:', error);
     }
   }
-
-  // Get the appropriate toast message
-  const getToastMessage = () => {
-    if (isFirstPrayer) {
-      return 'Your first prayer. Welcome. 🙏';
-    }
-    return 'Amen. 🙏';
-  };
 
   return (
     <View style={styles.container}>
@@ -174,18 +182,22 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
         <Animated.View 
           entering={SlideInUp.duration(300).springify()}
           exiting={SlideOutDown.duration(200)}
-          style={styles.toast}
+          style={[styles.toast, isMilestoneToast && styles.toastMilestone]}
         >
           <View style={styles.toastContent}>
-            <Text style={styles.toastText}>{getToastMessage()}</Text>
+            <Text style={[styles.toastText, isMilestoneToast && styles.toastTextMilestone]}>
+              {toastMessage}
+            </Text>
             {showSaveMessage && (
               <Text style={styles.toastSubtext}>Saved to Prayers. Only on this device.</Text>
             )}
           </View>
-          <Pressable style={styles.toastShareButton} onPress={handleShare}>
-            <Text style={styles.toastShareText}>Share</Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.accent} />
-          </Pressable>
+          {!isMilestoneToast && (
+            <Pressable style={styles.toastShareButton} onPress={handleShare}>
+              <Text style={styles.toastShareText}>Share</Text>
+              <Ionicons name="arrow-forward" size={14} color={colors.accent} />
+            </Pressable>
+          )}
         </Animated.View>
       )}
     </View>
@@ -278,6 +290,9 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       shadowRadius: 8,
       elevation: 5,
     },
+    toastMilestone: {
+      justifyContent: 'center',
+    },
     toastContent: {
       flex: 1,
     },
@@ -285,6 +300,10 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontSize: 17,
       fontWeight: '600',
       color: colors.text.primary,
+    },
+    toastTextMilestone: {
+      textAlign: 'center',
+      fontSize: 18,
     },
     toastSubtext: {
       fontSize: 13,

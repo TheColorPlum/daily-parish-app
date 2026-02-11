@@ -15,6 +15,9 @@ export interface TodayResponse {
   gospel: Reading;
   commentary_unified: string;
   audio_unified_url: string | null;
+  // Liturgical calendar
+  season?: string;
+  feast?: string | null;
 }
 
 export interface SessionStartResponse {

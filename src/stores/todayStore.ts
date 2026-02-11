@@ -22,6 +22,9 @@ interface ReadingsData {
   gospel: Reading;
   commentary: string;
   audioUrl: string | null;
+  // Liturgical calendar
+  season?: string;
+  feast?: string | null;
 }
 
 interface TodayState {
@@ -32,6 +35,10 @@ interface TodayState {
   gospel: Reading | null;
   commentary: string | null;
   audioUrl: string | null;
+  
+  // Liturgical calendar
+  season: string | null;
+  feast: string | null;
   
   // Session
   sessionId: string | null;
@@ -55,6 +62,8 @@ const initialState = {
   gospel: null,
   commentary: null,
   audioUrl: null,
+  season: null,
+  feast: null,
   sessionId: null,
   screenState: 'loading' as TodayScreenState,
   errorMessage: null,
@@ -72,6 +81,8 @@ export const useTodayStore = create<TodayState>()(
         gospel: data.gospel,
         commentary: data.commentary,
         audioUrl: data.audioUrl,
+        season: data.season || null,
+        feast: data.feast || null,
         errorMessage: null,
       }),
       
