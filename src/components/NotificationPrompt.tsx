@@ -65,7 +65,7 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
       style={styles.container}
     >
       <View style={styles.card}>
-        <Ionicons name="notifications-outline" size={24} color={colors.accent} style={styles.icon} />
+        <Ionicons name="notifications-outline" size={24} color={colors.accent.primary} style={styles.icon} />
         <Text style={styles.title}>A quiet reminder each day?</Text>
         <Text style={styles.subtitle}>We'll send a gentle nudge at 7am.</Text>
         
@@ -135,14 +135,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     },
     enableButton: {
       flex: 1,
-      backgroundColor: colors.accent,
+      backgroundColor: colors.accent.cta, // Orange for CTA
       paddingVertical: spacing.sm,
-      borderRadius: radius.md,
+      borderRadius: radius.sm, // 8px per spec
       alignItems: 'center',
     },
     enableText: {
       fontSize: 15,
       fontWeight: '600',
-      color: '#FFFFFF',
+      color: colors.text.inverse,
     },
   });

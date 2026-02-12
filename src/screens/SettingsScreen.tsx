@@ -140,9 +140,9 @@ export function SettingsScreen() {
             onValueChange={handleToggleReminder}
             trackColor={{ 
               false: colors.border, 
-              true: colors.accentSoft 
+              true: colors.accent.soft 
             }}
-            thumbColor={dailyReminderEnabled ? colors.accent : '#f4f3f4'}
+            thumbColor={dailyReminderEnabled ? colors.accent.primary : '#f4f3f4'}
           />
         </View>
         
@@ -250,7 +250,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     alignItems: 'center',
   },
   themeOptionActive: {
-    backgroundColor: colors.accentSoft,
+    backgroundColor: colors.accent.soft,
   },
   themeOptionBorder: {
     borderRightWidth: 1,
@@ -262,7 +262,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.text.secondary,
   },
   themeOptionTextActive: {
-    color: colors.accent,
+    color: colors.accent.primary,
     fontWeight: '600',
   },
 });

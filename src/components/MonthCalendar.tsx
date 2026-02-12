@@ -140,18 +140,18 @@ export function MonthCalendar({ completedDates, availableDates, onDayPress, init
             >
               <View style={[
                 styles.dayInner,
-                isToday && { borderWidth: 2, borderColor: colors.accent },
+                isToday && { borderWidth: 2, borderColor: colors.accent.primary },
               ]}>
                 <Text style={[
                   styles.dayText,
                   isFuture && { color: colors.text.muted },
-                  isToday && { fontWeight: '600', color: colors.accent },
+                  isToday && { fontWeight: '600', color: colors.accent.primary },
                 ]}>
                   {day}
                 </Text>
                 
                 {isCompleted && (
-                  <View style={[styles.completedDot, { backgroundColor: colors.accent }]} />
+                  <View style={[styles.completedDot, { backgroundColor: colors.semantic.success }]} />
                 )}
               </View>
             </TouchableOpacity>

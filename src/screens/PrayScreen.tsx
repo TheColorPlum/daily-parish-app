@@ -15,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
 import { usePrayerStore, Prayer } from '../stores';
-import { useTheme, spacing, radius } from '../theme';
+import { useTheme, spacing, radius, touchTargets } from '../theme';
 
 type FilterMode = 'active' | 'answered' | 'all';
 
@@ -56,9 +56,10 @@ export function PrayScreen() {
 
   function handleDelete(prayer: Prayer) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Use native Alert per Edna's spec
     Alert.alert(
-      'Delete Prayer',
-      'Are you sure you want to delete this prayer?',
+      'Delete this prayer?',
+      undefined, // No message body
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -112,11 +113,6 @@ export function PrayScreen() {
     });
   }
 
-  function getPreview(content: string) {
-    const firstLine = content.split('\n')[0];
-    return firstLine.length > 60 ? firstLine.slice(0, 60) + '...' : firstLine;
-  }
-
   // Group prayers by date
   const groupedPrayers = filteredPrayers.reduce((groups, prayer) => {
     const dateKey = prayer.createdAt.split('T')[0];
@@ -150,7 +146,7 @@ export function PrayScreen() {
               <Ionicons
                 name="checkmark-circle"
                 size={18}
-                color={colors.accent}
+                color={colors.semantic.success}
                 style={styles.answeredIcon}
               />
             )}
@@ -170,6 +166,7 @@ export function PrayScreen() {
               <Pressable
                 style={styles.actionButton}
                 onPress={() => handleToggleAnswered(prayer)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons
                   name={isAnswered ? 'close-circle-outline' : 'checkmark-circle-outline'}
@@ -184,6 +181,7 @@ export function PrayScreen() {
               <Pressable
                 style={styles.actionButton}
                 onPress={() => handleShare(prayer)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons name="share-outline" size={20} color={colors.text.secondary} />
                 <Text style={styles.actionText}>Share</Text>
@@ -192,9 +190,16 @@ export function PrayScreen() {
               <Pressable
                 style={styles.actionButton}
                 onPress={() => handleDelete(prayer)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="trash-outline" size={20} color="#DC2626" />
-                <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
+                <Ionicons 
+                  name="trash-outline" 
+                  size={20} 
+                  color={colors.semantic.destructive} 
+                />
+                <Text style={[styles.actionText, styles.actionTextDestructive]}>
+                  Delete
+                </Text>
               </Pressable>
             </Animated.View>
           )}
@@ -211,8 +216,8 @@ export function PrayScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <View style={[styles.emptyIconContainer, { backgroundColor: colors.accentSoft }]}>
-        <Ionicons name="heart-outline" size={48} color={colors.accent} />
+      <View style={[styles.emptyIconContainer, { backgroundColor: colors.accent.soft }]}>
+        <Ionicons name="heart-outline" size={48} color={colors.accent.primary} />
       </View>
       <Text style={styles.emptyTitle}>
         {filterMode === 'answered' ? 'No answered prayers yet' : 'No prayers yet'}
@@ -220,7 +225,7 @@ export function PrayScreen() {
       <Text style={styles.emptySubtitle}>
         {filterMode === 'answered'
           ? 'Mark prayers as answered when God moves'
-          : 'Complete today\'s reading to write your first prayer'}
+          : 'Your prayers will appear here'}
       </Text>
     </View>
   );
@@ -322,6 +327,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontSize: 28,
       fontWeight: '600',
       color: colors.text.primary,
+      fontFamily: 'Georgia',
     },
 
     // Filter Tabs
@@ -336,9 +342,11 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       marginRight: spacing.sm,
       borderRadius: radius.pill,
       backgroundColor: colors.bg.subtle,
+      minHeight: touchTargets.minimum,
+      justifyContent: 'center',
     },
     filterTabActive: {
-      backgroundColor: colors.accent,
+      backgroundColor: colors.accent.primary, // Green for identity
     },
     filterTabText: {
       fontSize: 14,
@@ -346,7 +354,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       color: colors.text.secondary,
     },
     filterTabTextActive: {
-      color: '#FFFFFF',
+      color: colors.text.inverse,
     },
 
     // List
@@ -410,11 +418,15 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       alignItems: 'center',
       marginRight: spacing.lg,
       paddingVertical: spacing.xs,
+      minHeight: touchTargets.minimum,
     },
     actionText: {
       fontSize: 14,
       color: colors.text.secondary,
       marginLeft: spacing.xs,
+    },
+    actionTextDestructive: {
+      color: colors.semantic.destructive,
     },
 
     // Empty State
@@ -437,6 +449,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       fontWeight: '600',
       color: colors.text.primary,
       marginBottom: spacing.sm,
+      fontFamily: 'Georgia',
     },
     emptySubtitle: {
       fontSize: 15,

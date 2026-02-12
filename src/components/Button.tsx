@@ -71,7 +71,7 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator 
-          color={variant === 'primary' ? '#FFFFFF' : colors.brand.primary} 
+          color={variant === 'primary' ? colors.text.inverse : colors.accent.cta} 
           size="small" 
         />
       ) : (
@@ -84,7 +84,7 @@ export function Button({
 const styles = StyleSheet.create({
   base: {
     height: 52,
-    borderRadius: radius.lg,
+    borderRadius: radius.sm, // 8px per spec
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
@@ -92,33 +92,33 @@ const styles = StyleSheet.create({
   text: {
     ...typography.bodyStrong,
   },
-  // Primary
+  // Primary - Orange CTA
   primary: {
-    backgroundColor: colors.brand.primary,
+    backgroundColor: colors.accent.cta,
   },
   primaryText: {
-    color: '#FFFFFF',
+    color: colors.text.inverse,
   },
-  // Secondary
+  // Secondary - Outlined
   secondary: {
     backgroundColor: colors.bg.elevated,
     borderWidth: 1,
-    borderColor: colors.border.subtle,
+    borderColor: colors.border,
   },
   secondaryText: {
     color: colors.text.primary,
   },
-  // Ghost
+  // Ghost - Text only
   ghost: {
     backgroundColor: 'transparent',
     height: 'auto',
     paddingVertical: spacing.md,
   },
   ghostText: {
-    color: colors.brand.primary,
+    color: colors.accent.primary, // Green for links
   },
   ghostDestructiveText: {
-    color: colors.accent.red,
+    color: colors.semantic.destructive,
   },
   // Disabled
   disabled: {

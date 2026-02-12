@@ -12,6 +12,6 @@ export {
   Body, 
   BodyStrong, 
   Caption,
-  ScriptureHeading,
-  ScriptureBody,
+  ScriptureReference,
+  Scripture,
 } from './Typography';

@@ -5,7 +5,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { useUserStore } from '../stores';
-import { useTheme, spacing, radius } from '../theme';
+import { useTheme, spacing, radius, typography } from '../theme';
 
 interface WelcomeInterstitialProps {
   onComplete: () => void;
@@ -73,8 +73,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingHorizontal: spacing.xl,
     },
     title: {
-      fontSize: 32,
-      fontWeight: '600',
+      ...typography.displayLg,
       color: colors.text.primary,
       marginBottom: spacing.xl * 2,
       textAlign: 'center',
@@ -101,14 +100,15 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       paddingBottom: spacing.xl,
     },
     beginButton: {
-      backgroundColor: colors.accent,
+      backgroundColor: colors.accent.cta, // Orange for CTA
       paddingVertical: spacing.lg,
-      borderRadius: radius.lg,
+      borderRadius: radius.sm, // 8px per spec
       alignItems: 'center',
+      height: 52,
+      justifyContent: 'center',
     },
     beginButtonText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: '#FFFFFF',
+      ...typography.bodyStrong,
+      color: colors.text.inverse,
     },
   });

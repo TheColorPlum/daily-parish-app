@@ -14,37 +14,50 @@ import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeIn,
   FadeOut,
-  SlideInUp,
-  SlideOutDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  withDelay,
+  runOnJS,
+  Easing,
 } from 'react-native-reanimated';
 
 import { usePrayerStore, useUserStore, MilestoneType } from '../stores';
-import { useTheme, spacing, radius } from '../theme';
+import { 
+  useTheme, 
+  spacing, 
+  radius, 
+  timing,
+  toastTiming,
+  shadow,
+  touchTargets,
+} from '../theme';
 
 interface PrayerInputProps {
   readingId?: string | null;
   readingDate?: string | null;
 }
 
-// Milestone toast messages (waiting on Draper for final copy)
+// Milestone toast messages (from product spec)
 const MILESTONE_MESSAGES: Record<MilestoneType, string> = {
   '1_day': 'Your first prayer. Welcome. 🙏',
-  '2_days': 'Two days. You came back.',
-  '1_week': 'One week. A practice begins.',
-  '2_weeks': 'Two weeks of prayer.',
-  '1_month': 'One month. This is yours now.',
-  '6_months': 'Six months. A quiet rhythm.',
-  '1_year': 'One year. 🙏',
+  '2_days': 'You came back.',
+  '1_week': 'A week of showing up.',
+  '2_weeks': 'Two weeks. The rhythm is yours.',
+  '1_month': 'One month. This is becoming practice.',
+  '6_months': 'Six months. You stayed.',
+  '1_year': 'A year. 🙏',
 };
 
 export function PrayerInput({ readingId }: PrayerInputProps) {
   const { colors } = useTheme();
-  const styles = createStyles(colors);
   
   const [prayerText, setPrayerText] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('Amen. 🙏');
+  const [toastMessage, setToastMessage] = useState('Saved.');
   const [showSaveMessage, setShowSaveMessage] = useState(false);
   const [isMilestoneToast, setIsMilestoneToast] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -57,18 +70,83 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
   
   const canSave = prayerText.trim().length > 0;
 
-  // Auto-hide toast after delay (longer for milestones)
+  // Toast animation values
+  const toastOpacity = useSharedValue(0);
+  const toastTranslateY = useSharedValue(20);
+  const toastScale = useSharedValue(1);
+
+  // Auto-hide toast after delay
   useEffect(() => {
     if (showToast) {
-      const delay = isMilestoneToast ? 5000 : 4000;
+      const holdTime = isMilestoneToast 
+        ? toastTiming.milestone.hold 
+        : toastTiming.standard.hold;
+      const fadeOutTime = isMilestoneToast
+        ? toastTiming.milestone.fadeOut
+        : toastTiming.standard.fadeOut;
+
       const timer = setTimeout(() => {
-        setShowToast(false);
-        setShowSaveMessage(false);
-        setIsMilestoneToast(false);
-      }, delay);
+        // Animate out
+        toastOpacity.value = withTiming(0, { 
+          duration: fadeOutTime,
+          easing: Easing.in(Easing.ease),
+        });
+        toastTranslateY.value = withTiming(20, { 
+          duration: fadeOutTime,
+          easing: Easing.in(Easing.ease),
+        });
+        
+        // Clean up state after animation
+        setTimeout(() => {
+          setShowToast(false);
+          setShowSaveMessage(false);
+          setIsMilestoneToast(false);
+        }, fadeOutTime);
+      }, holdTime);
+      
       return () => clearTimeout(timer);
     }
   }, [showToast, isMilestoneToast]);
+
+  function showToastWithAnimation(isMilestone: boolean) {
+    const fadeInTime = isMilestone
+      ? toastTiming.milestone.fadeIn
+      : toastTiming.standard.fadeIn;
+
+    // Reset values
+    toastOpacity.value = 0;
+    toastTranslateY.value = 20;
+    toastScale.value = 1;
+
+    // Animate in
+    toastOpacity.value = withTiming(1, { 
+      duration: fadeInTime,
+      easing: Easing.out(Easing.ease),
+    });
+    toastTranslateY.value = withTiming(0, { 
+      duration: fadeInTime,
+      easing: Easing.out(Easing.ease),
+    });
+
+    // Milestone pulse: 1.0 → 1.02 → 1.0
+    if (isMilestone) {
+      toastScale.value = withSequence(
+        withTiming(1.02, { duration: 200, easing: Easing.out(Easing.ease) }),
+        withTiming(1.02, { duration: 200 }), // hold
+        withTiming(1, { duration: 200, easing: Easing.in(Easing.ease) })
+      );
+    }
+
+    setShowToast(true);
+  }
+
+  const toastAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: toastOpacity.value,
+    transform: [
+      { translateY: toastTranslateY.value },
+      { scale: toastScale.value },
+    ],
+  }));
 
   async function handleSave() {
     if (!canSave) return;
@@ -84,7 +162,7 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
       // Check for milestone after saving
       const milestone = getUnseenMilestone();
       
-      // Hold for a moment, then show toast and clear
+      // Hold for breath moment, then show toast
       setTimeout(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setPrayerText('');
@@ -95,9 +173,11 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
           setToastMessage(MILESTONE_MESSAGES[milestone.type]);
           setIsMilestoneToast(true);
           markMilestoneSeen(milestone.type);
+          showToastWithAnimation(true);
         } else {
-          setToastMessage('Amen. 🙏');
+          setToastMessage('Saved.');
           setIsMilestoneToast(false);
+          showToastWithAnimation(false);
         }
         
         // Show one-time save message (only on first prayer, not milestones)
@@ -105,9 +185,7 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
           setShowSaveMessage(true);
           setHasSeenSaveMessage(true);
         }
-        
-        setShowToast(true);
-      }, 800);
+      }, timing.breath); // 1500ms hold
     } catch (error) {
       console.error('Failed to save prayer:', error);
       setIsSaving(false);
@@ -117,7 +195,6 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
 
   async function handleShare() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowToast(false);
     
     try {
       await Share.share({
@@ -128,10 +205,12 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
     }
   }
 
+  const styles = createStyles(colors, isFocused, canSave);
+
   return (
     <View style={styles.container}>
-      {/* Input Card */}
-      <View style={styles.inputCard}>
+      {/* Input Area */}
+      <View style={styles.inputWrapper}>
         <TextInput
           ref={inputRef}
           style={styles.textInput}
@@ -139,38 +218,34 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
           placeholderTextColor={colors.text.muted}
           value={prayerText}
           onChangeText={setPrayerText}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           multiline
           textAlignVertical="top"
           returnKeyType="default"
           blurOnSubmit={false}
           editable={!isSaving}
         />
-        
-        <View style={styles.inputFooter}>
-          <View style={styles.spacer} />
-          
-          <Pressable
-            style={[
-              styles.amenButton,
-              !canSave && styles.amenButtonDisabled,
-              isSaving && styles.amenButtonSaving,
-            ]}
-            onPress={handleSave}
-            disabled={!canSave || isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={[
-                styles.amenButtonText,
-                !canSave && styles.amenButtonTextDisabled,
-              ]}>
-                Amen
-              </Text>
-            )}
-          </Pressable>
-        </View>
       </View>
+      
+      {/* Amen Button - Full Width */}
+      <Pressable
+        style={[
+          styles.amenButton,
+          !canSave && styles.amenButtonDisabled,
+          isSaving && styles.amenButtonSaving,
+        ]}
+        onPress={handleSave}
+        disabled={!canSave || isSaving}
+      >
+        {isSaving ? (
+          <ActivityIndicator size="small" color={colors.text.inverse} />
+        ) : (
+          <Text style={styles.amenButtonText}>
+            Amen
+          </Text>
+        )}
+      </Pressable>
       
       {/* Soft Copy */}
       <Text style={styles.softCopy}>
@@ -179,23 +254,32 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
 
       {/* Toast */}
       {showToast && (
-        <Animated.View 
-          entering={SlideInUp.duration(300).springify()}
-          exiting={SlideOutDown.duration(200)}
-          style={[styles.toast, isMilestoneToast && styles.toastMilestone]}
-        >
+        <Animated.View style={[styles.toast, toastAnimatedStyle]}>
           <View style={styles.toastContent}>
-            <Text style={[styles.toastText, isMilestoneToast && styles.toastTextMilestone]}>
+            <Text style={[
+              styles.toastText, 
+              isMilestoneToast && styles.toastTextMilestone
+            ]}>
               {toastMessage}
             </Text>
             {showSaveMessage && (
-              <Text style={styles.toastSubtext}>Saved to Prayers. Only on this device.</Text>
+              <Text style={styles.toastSubtext}>
+                Saved to Prayers. Only on this device.
+              </Text>
             )}
           </View>
           {!isMilestoneToast && (
-            <Pressable style={styles.toastShareButton} onPress={handleShare}>
+            <Pressable 
+              style={styles.toastShareButton} 
+              onPress={handleShare}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text style={styles.toastShareText}>Share</Text>
-              <Ionicons name="arrow-forward" size={14} color={colors.accent} />
+              <Ionicons 
+                name="arrow-forward" 
+                size={14} 
+                color={colors.accent.primary} 
+              />
             </Pressable>
           )}
         </Animated.View>
@@ -208,102 +292,93 @@ export function PrayerInput({ readingId }: PrayerInputProps) {
 // STYLES
 // ============================================
 
-const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
+const createStyles = (
+  colors: ReturnType<typeof useTheme>['colors'],
+  isFocused: boolean,
+  hasText: boolean
+) =>
   StyleSheet.create({
     container: {
       width: '100%',
     },
     
-    // Input Card
-    inputCard: {
+    // Input wrapper with border states
+    inputWrapper: {
       backgroundColor: colors.bg.elevated,
-      borderRadius: radius.lg,
-      padding: spacing.md,
-      minHeight: 160,
+      borderRadius: radius.md, // 12px
+      borderWidth: isFocused ? 2 : 1,
+      borderColor: isFocused ? colors.accent.cta : colors.border,
+      minHeight: 120,
+      padding: spacing.md, // 16px
     },
     textInput: {
       flex: 1,
-      fontSize: 17,
+      fontSize: 16,
       lineHeight: 24,
       color: colors.text.primary,
-      minHeight: 100,
+      minHeight: 88, // 120 - 32 (padding)
       paddingTop: 0,
+      paddingBottom: 0,
     },
-    inputFooter: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      marginTop: spacing.sm,
-    },
-    spacer: {
-      flex: 1,
-    },
+    
+    // Amen Button - Full width below input
     amenButton: {
-      backgroundColor: colors.accent,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.xl,
-      borderRadius: radius.md,
-      minWidth: 90,
+      backgroundColor: colors.accent.cta, // Orange
+      height: 52,
+      borderRadius: radius.sm, // 8px
       alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.sm, // 8px
     },
     amenButtonDisabled: {
-      backgroundColor: colors.bg.subtle,
+      opacity: 0.4,
     },
     amenButtonSaving: {
-      backgroundColor: colors.accent,
       opacity: 0.8,
     },
     amenButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    amenButtonTextDisabled: {
-      color: colors.text.muted,
+      color: colors.text.inverse,
     },
     
     // Soft Copy
     softCopy: {
       fontSize: 14,
       color: colors.text.muted,
-      fontStyle: 'italic',
       textAlign: 'center',
-      marginTop: spacing.md,
-      paddingHorizontal: spacing.lg,
+      marginTop: spacing.md, // 16px
     },
 
-    // Toast
+    // Toast - positioned above TabBar
     toast: {
       position: 'absolute',
-      bottom: 0,
+      bottom: -80, // Position above TabBar
       left: 0,
       right: 0,
       backgroundColor: colors.bg.elevated,
-      borderRadius: radius.lg,
-      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 5,
-    },
-    toastMilestone: {
-      justifyContent: 'center',
+      ...shadow.medium,
     },
     toastContent: {
       flex: 1,
     },
     toastText: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 16,
+      fontWeight: '500',
       color: colors.text.primary,
     },
     toastTextMilestone: {
       textAlign: 'center',
-      fontSize: 18,
+      fontSize: 17,
+      fontWeight: '600',
     },
     toastSubtext: {
       fontSize: 13,
@@ -314,11 +389,12 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: spacing.xs,
-      paddingHorizontal: spacing.sm,
+      paddingLeft: spacing.sm,
+      minHeight: touchTargets.minimum, // 44px touch target
     },
     toastShareText: {
       fontSize: 15,
-      color: colors.accent,
+      color: colors.accent.primary, // Green for links
       fontWeight: '500',
       marginRight: spacing.xs,
     },

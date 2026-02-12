@@ -73,7 +73,7 @@ function TabNavigator() {
           
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.accent.primary, // Green for identity
         tabBarInactiveTintColor: colors.text.muted,
         tabBarStyle: {
           backgroundColor: colors.bg.surface,

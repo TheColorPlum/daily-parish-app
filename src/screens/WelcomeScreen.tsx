@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.bg.elevated,
     borderWidth: 1,
-    borderColor: colors.border.subtle,
+    borderColor: colors.border,
     borderRadius: radius.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,

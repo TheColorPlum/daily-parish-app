@@ -61,10 +61,10 @@ export function Caption({ children, ...props }: Omit<TypographyProps, 'variant'>
   return <Text variant="caption" {...props}>{children}</Text>;
 }
 
-export function ScriptureHeading({ children, ...props }: Omit<TypographyProps, 'variant'>) {
-  return <Text variant="scriptureHeading" {...props}>{children}</Text>;
+export function ScriptureReference({ children, ...props }: Omit<TypographyProps, 'variant'>) {
+  return <Text variant="scriptureReference" {...props}>{children}</Text>;
 }
 
-export function ScriptureBody({ children, ...props }: Omit<TypographyProps, 'variant'>) {
-  return <Text variant="scriptureBody" {...props}>{children}</Text>;
+export function Scripture({ children, ...props }: Omit<TypographyProps, 'variant'>) {
+  return <Text variant="scripture" {...props}>{children}</Text>;
 }

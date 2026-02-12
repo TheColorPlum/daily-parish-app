@@ -38,6 +38,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.elevated,
   },
   alt: {
-    backgroundColor: colors.bg.surfaceAlt,
+    backgroundColor: colors.bg.subtle,
   },
 });

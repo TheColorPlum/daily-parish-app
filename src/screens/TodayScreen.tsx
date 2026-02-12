@@ -278,7 +278,7 @@ export function TodayScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.accent.primary} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
@@ -416,7 +416,7 @@ export function TodayScreen() {
                   <View style={styles.audioCardTitleRow}>
                     <Text style={styles.audioCardTitle}>Today's Reading</Text>
                     {audioCompleted && (
-                      <Ionicons name="checkmark-circle" size={18} color={colors.accent} style={styles.completedBadge} />
+                      <Ionicons name="checkmark-circle" size={18} color={colors.semantic.success} style={styles.completedBadge} />
                     )}
                   </View>
                   <Text style={styles.audioCardDuration}>
@@ -456,7 +456,7 @@ export function TodayScreen() {
                   }}
                 >
                   <Text style={styles.seeReadingText}>See full reading</Text>
-                  <Ionicons name="chevron-forward" size={14} color={colors.accent} />
+                  <Ionicons name="chevron-forward" size={14} color={colors.accent.primary} />
                 </Pressable>
               </Animated.View>
             )}
@@ -515,7 +515,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
   liturgicalInfo: {
     fontSize: 15,
-    color: colors.accent,
+    color: colors.accent.primary,
     marginTop: 2,
     fontStyle: 'italic',
   },
@@ -542,7 +542,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accent.primary, // Green for identity
     justifyContent: 'center',
     alignItems: 'center',
     ...shadow.subtle,
@@ -585,7 +585,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   progressFill: {
     height: '100%',
     borderRadius: 2,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accent.primary,
   },
   seeReadingLink: {
     flexDirection: 'row',
@@ -594,7 +594,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   },
   seeReadingText: {
     fontSize: 14,
-    color: colors.accent,
+    color: colors.accent.primary,
     fontWeight: '500',
   },
 
@@ -629,7 +629,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
   retryText: {
     fontSize: 16,
     fontWeight: '500',
-    color: colors.accent,
+    color: colors.accent.primary,
   },
 
   // Modal
