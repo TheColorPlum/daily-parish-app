@@ -68,8 +68,13 @@ export function WelcomeScreen() {
         password,
       });
 
+      console.log('Sign in result:', result.status, result);
+
       if (result.status === 'complete') {
         await setSignInActive({ session: result.createdSessionId });
+      } else {
+        // Handle other statuses (needs_first_factor, needs_second_factor, etc.)
+        Alert.alert('Sign In', `Unexpected status: ${result.status}. Check Clerk dashboard settings.`);
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
