@@ -27,8 +27,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTodayStore, useUserStore, useSettingsStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError, formatReference, checkNotificationPermissions } from '../lib';
-import { useTheme, spacing, radius, shadow, typography } from '../theme';
-import { PrayerInput, NotificationPrompt } from '../components';
+import { useTheme, spacing, radius, shadow, typography, touchTargets } from '../theme';
+import { PrayerInput, NotificationPrompt, DatePickerSheet } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,10 +37,16 @@ export function TodayScreen() {
   const styles = createStyles(colors);
   const { getToken } = useAuth();
   const [showReading, setShowReading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [audioExpanded, setAudioExpanded] = useState(true);
   const [audioCompleted, setAudioCompleted] = useState(false);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
   const [hasCheckedNotifications, setHasCheckedNotifications] = useState(false);
+  
+  // Determine if viewing a past date
+  const todayStr = new Date().toISOString().split('T')[0];
+  const viewingPastDate = selectedDate !== null && selectedDate !== todayStr;
   
   // Stores
   const { 
@@ -145,24 +151,10 @@ export function TodayScreen() {
     audioPlayer.seekTo(positionMs);
   }
 
-  // Refresh when app comes to foreground on new day
-  useAppStateRefresh(loadTodayData);
-
-  // Load data on mount
-  useEffect(() => {
-    loadTodayData();
-  }, []);
-
-  // Load audio when URL is available
-  useEffect(() => {
-    if (audioUrl && screenState === 'ready') {
-      audioPlayer.loadAudio(audioUrl);
-    }
-  }, [audioUrl, screenState]);
-
-  async function loadTodayData() {
+  async function loadReadingsForDate(targetDate?: string) {
     try {
       setScreenState('loading');
+      setAudioCompleted(false); // Reset audio state for new date
       const token = await getToken();
       
       if (!token) {
@@ -170,6 +162,26 @@ export function TodayScreen() {
         return;
       }
 
+      // If loading a specific date, just get readings (no session tracking)
+      if (targetDate && targetDate !== todayStr) {
+        const readings = await api.getReadingsByDate(token, targetDate);
+        
+        setReadings({
+          date: readings.date,
+          first_reading: readings.first_reading,
+          responsorial_psalm: readings.responsorial_psalm,
+          gospel: readings.gospel,
+          commentary: readings.commentary_unified,
+          audioUrl: readings.audio_unified_url,
+          season: readings.season,
+          feast: readings.feast,
+        });
+        
+        setScreenState('ready');
+        return;
+      }
+
+      // Loading today - include session tracking
       const [readings, session] = await Promise.all([
         api.getTodayReadings(token),
         api.startSession(token).catch((err: ApiError) => {
@@ -197,10 +209,10 @@ export function TodayScreen() {
       }
       setScreenState('ready');
     } catch (error) {
-      console.error('Failed to load today data:', error);
+      console.error('Failed to load readings:', error);
       if (error instanceof ApiError) {
         if (error.status === 404) {
-          setError('Today\'s readings are not available right now.');
+          setError('Readings not available for this date.');
         } else if (error.status === 401) {
           setError('Session expired. Please sign in again.');
         } else {
@@ -210,6 +222,38 @@ export function TodayScreen() {
         setError('Votive needs an internet connection.');
       }
     }
+  }
+
+  // Alias for backward compatibility
+  const loadTodayData = () => loadReadingsForDate();
+
+  // Refresh when app comes to foreground on new day
+  useAppStateRefresh(loadTodayData);
+
+  // Load data on mount
+  useEffect(() => {
+    loadTodayData();
+  }, []);
+
+  // Load audio when URL is available
+  useEffect(() => {
+    if (audioUrl && screenState === 'ready') {
+      audioPlayer.loadAudio(audioUrl);
+    }
+  }, [audioUrl, screenState]);
+
+  // Handle date selection from picker
+  function handleSelectDate(newDate: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedDate(newDate);
+    loadReadingsForDate(newDate);
+  }
+
+  // Return to today
+  function handleBackToToday() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedDate(null);
+    loadReadingsForDate();
   }
 
   async function handleAudioComplete() {
@@ -375,12 +419,41 @@ export function TodayScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.date}>{formatDate(date)}</Text>
+            {viewingPastDate ? (
+              <Pressable onPress={handleBackToToday} style={styles.backToToday}>
+                <Ionicons name="arrow-back" size={16} color={colors.accent.primary} />
+                <Text style={styles.backToTodayText}>Today</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+            )}
+            <Pressable 
+              style={styles.dateRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowDatePicker(true);
+              }}
+            >
+              <Text style={styles.date}>{formatDate(date)}</Text>
+              <Ionicons 
+                name="chevron-down" 
+                size={16} 
+                color={colors.text.muted} 
+                style={styles.dateChevron}
+              />
+            </Pressable>
             {(feast || season) && (
-              <Text style={styles.liturgicalInfo}>{feast || season}</Text>
+              <Text style={styles.liturgicalInfo}>• {feast || season}</Text>
             )}
           </View>
+
+          {/* Date Picker Sheet */}
+          <DatePickerSheet
+            visible={showDatePicker}
+            selectedDate={selectedDate || todayStr}
+            onSelectDate={handleSelectDate}
+            onClose={() => setShowDatePicker(false)}
+          />
 
           {/* Audio Card */}
           <View style={styles.audioCard}>
@@ -508,10 +581,27 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     color: colors.text.primary,
     letterSpacing: -0.5,
   },
+  backToToday: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  backToTodayText: {
+    ...typography.bodyStrong,
+    color: colors.accent.primary,
+    marginLeft: spacing.xs,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+  },
   date: {
     ...typography.body,
     color: colors.text.muted,
-    marginTop: spacing.xs,
+  },
+  dateChevron: {
+    marginLeft: spacing.xs,
   },
   liturgicalInfo: {
     ...typography.caption,

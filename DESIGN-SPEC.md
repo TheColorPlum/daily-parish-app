@@ -46,7 +46,7 @@ bg.surface: '#FAF9F6'  // was #F8F7F4
 
 // Accent split into two roles
 accent.primary: '#3D5A47'  // green — identity, links, badges
-accent.cta: '#F97316'       // orange — buttons, actions
+accent.cta: '#C9954A'       // burnished gold — buttons, actions (candlelight)
 ```
 
 ### Typography (Updated)
@@ -388,11 +388,75 @@ When prayer input is focused:
 
 ---
 
+## Reading History
+
+**Access:** Tap the date in Today screen header
+
+**Trigger:** Date text ("Thursday, February 12") is tappable, indicated by subtle chevron (▾)
+
+### Date Picker Sheet
+
+```
+┌─────────────────────────────────────┐
+│ Thursday, February 12    ← Today    │
+│ Wednesday, February 11              │
+│ Tuesday, February 10                │
+│ Monday, February 9                  │
+│ Sunday, February 8                  │
+│ Saturday, February 7                │
+│ Friday, February 6                  │
+└─────────────────────────────────────┘
+```
+
+- Shows last 7 days
+- Today marked with "← Today" label
+- Tap a date → loads that day's reading
+- Sheet slides up, standard iOS presentation
+
+### Past Date View
+
+**Header transforms:**
+```
+TODAY:
+┌─────────────────────────────────────┐
+│ Good afternoon                      │
+│ Thursday, February 12  ▾            │
+└─────────────────────────────────────┘
+
+PAST DATE:
+┌─────────────────────────────────────┐
+│ ← Today                             │
+│ Tuesday, February 10  ▾             │
+│ • Memorial of St. Scholastica       │
+└─────────────────────────────────────┘
+```
+
+- Greeting replaced with "← Today" back link
+- Date still tappable to pick another day
+- Liturgical context shows that day's info
+
+**Content:**
+- Audio card loads that day's `audio_unified_url`
+- Scripture shows that day's readings
+- Commentary shows that day's commentary
+- Audio is fully playable
+
+**Prayer Input:**
+- **Stays visible** on past dates
+- Prompt unchanged: "What's on your heart today?"
+- Prayer saves with TODAY's date (prayer is always now)
+- Philosophy: The reading may be old, but the prayer is a present-moment act
+
+**"← Today" link:**
+- Tapping returns to current day
+- Position: top left, replaces greeting
+- Style: `accent.primary` (green), `bodyStrong`
+
+---
+
 ## Dark Mode
 
-**Status:** Not in V1.
-
-Tokens are defined and ready. Don't build the toggle. Ship light only.
+**Status:** Toggle exists in Settings. Tokens defined for both modes.
 
 ---
 

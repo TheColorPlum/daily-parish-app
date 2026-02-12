@@ -32,9 +32,9 @@ export const lightColors = {
   },
   accent: {
     primary: '#3D5A47',      // Forest green — identity, presence
-    cta: '#F97316',          // Orange — action, buttons
+    cta: '#C9954A',          // Burnished gold — action, buttons (candlelight)
     soft: 'rgba(61, 90, 71, 0.08)',
-    ctaSoft: 'rgba(249, 115, 22, 0.08)',
+    ctaSoft: 'rgba(201, 149, 74, 0.10)',
   },
   semantic: {
     destructive: '#DC2626',
@@ -62,9 +62,9 @@ export const darkColors = {
   },
   accent: {
     primary: '#D4A84B',      // Warm gold — candlelight
-    cta: '#FB923C',          // Lighter orange for dark contrast
+    cta: '#D4A84B',          // Same gold — unified flame
     soft: 'rgba(212, 168, 75, 0.12)',
-    ctaSoft: 'rgba(251, 146, 60, 0.12)',
+    ctaSoft: 'rgba(212, 168, 75, 0.15)',
   },
   semantic: {
     destructive: '#EF4444',
