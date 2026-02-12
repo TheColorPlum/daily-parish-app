@@ -666,9 +666,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     marginBottom: spacing.md,
   },
   scriptureText: {
-    // TODO: Token says 18px, design shows 20px — awaiting Pelumi decision
     ...typography.scripture,
-    fontSize: 20, // Override until decision
     color: colors.text.scripture,
   },
   modalDivider: {

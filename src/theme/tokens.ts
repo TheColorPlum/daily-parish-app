@@ -135,9 +135,9 @@ export const typography = {
     fontFamily: 'System',
   },
   
-  // Scripture — Georgia italic, generous line height
+  // Scripture — Georgia italic, contemplative size
   scripture: {
-    fontSize: 18,
+    fontSize: 20,
     lineHeight: 32,
     fontWeight: '400' as const,
     fontFamily: 'Georgia',
