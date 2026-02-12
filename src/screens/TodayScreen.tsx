@@ -27,7 +27,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTodayStore, useUserStore, useSettingsStore } from '../stores';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError, formatReference, checkNotificationPermissions } from '../lib';
-import { useTheme, spacing, radius, shadow } from '../theme';
+import { useTheme, spacing, radius, shadow, typography } from '../theme';
 import { PrayerInput, NotificationPrompt } from '../components';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -503,18 +503,18 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     paddingBottom: spacing.xl,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: '600',
+    ...typography.displayLg,
+    fontSize: 28, // Between displayLg (32) and displayMd (24)
     color: colors.text.primary,
     letterSpacing: -0.5,
   },
   date: {
-    fontSize: 17,
+    ...typography.body,
     color: colors.text.muted,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   liturgicalInfo: {
-    fontSize: 15,
+    ...typography.caption,
     color: colors.accent.primary,
     marginTop: 2,
     fontStyle: 'italic',
@@ -556,15 +556,14 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     alignItems: 'center',
   },
   audioCardTitle: {
-    fontSize: 17,
-    fontWeight: '600',
+    ...typography.bodyStrong,
     color: colors.text.primary,
   },
   completedBadge: {
     marginLeft: spacing.xs,
   },
   audioCardDuration: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.text.muted,
     marginTop: 2,
   },
@@ -593,7 +592,7 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     paddingTop: spacing.sm,
   },
   seeReadingText: {
-    fontSize: 14,
+    ...typography.caption,
     color: colors.accent.primary,
     fontWeight: '500',
   },
@@ -611,24 +610,23 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     paddingHorizontal: spacing.xl,
   },
   loadingText: {
-    fontSize: 15,
+    ...typography.caption,
     color: colors.text.muted,
     marginTop: spacing.lg,
   },
   errorText: {
-    fontSize: 16,
+    ...typography.body,
     color: colors.text.secondary,
     textAlign: 'center',
     marginTop: spacing.lg,
     marginBottom: spacing.lg,
   },
   retryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   retryText: {
-    fontSize: 16,
-    fontWeight: '500',
+    ...typography.bodyStrong,
     color: colors.accent.primary,
   },
 
@@ -641,14 +639,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.title,
     color: colors.text.primary,
   },
   closeButton: {
@@ -661,38 +658,33 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flex: 1,
   },
   modalContent: {
-    padding: 24,
+    padding: spacing.lg,
   },
   scriptureRef: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    ...typography.scriptureReference,
     color: colors.text.muted,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   scriptureText: {
-    fontSize: 20,
-    fontFamily: 'Georgia',
-    fontStyle: 'italic',
-    lineHeight: 32,
+    // TODO: Token says 18px, design shows 20px — awaiting Pelumi decision
+    ...typography.scripture,
+    fontSize: 20, // Override until decision
     color: colors.text.scripture,
   },
   modalDivider: {
     height: 1,
     backgroundColor: colors.border,
-    marginVertical: 32,
+    marginVertical: spacing.xl,
   },
   commentaryLabel: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.captionStrong,
     textTransform: 'uppercase',
     letterSpacing: 1,
     color: colors.text.muted,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   commentaryText: {
-    fontSize: 17,
+    ...typography.body,
     lineHeight: 28,
     color: colors.text.primary,
   },

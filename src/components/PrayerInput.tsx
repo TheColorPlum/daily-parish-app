@@ -32,6 +32,7 @@ import {
   toastTiming,
   shadow,
   touchTargets,
+  tabBar,
 } from '../theme';
 
 interface PrayerInputProps {
@@ -353,7 +354,7 @@ const createStyles = (
     // Toast - positioned above TabBar
     toast: {
       position: 'absolute',
-      bottom: -80, // Position above TabBar
+      bottom: -(tabBar.height + spacing.lg), // Position above TabBar
       left: 0,
       right: 0,
       backgroundColor: colors.bg.elevated,
