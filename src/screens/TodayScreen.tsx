@@ -585,11 +585,13 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.xs,
+    minHeight: touchTargets.minimum, // Ensure tappable
   },
   backToTodayText: {
-    ...typography.bodyStrong,
+    ...typography.caption,
+    fontWeight: '500',
     color: colors.accent.primary,
-    marginLeft: spacing.xs,
+    marginLeft: 4,
   },
   dateRow: {
     flexDirection: 'row',

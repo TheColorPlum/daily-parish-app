@@ -95,7 +95,10 @@ export function PrayScreen() {
   }
 
   function formatDate(dateString: string) {
-    const date = new Date(dateString);
+    // Parse YYYY-MM-DD as local date (not UTC) by adding noon time
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day, 12, 0, 0); // noon local time
+    
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
