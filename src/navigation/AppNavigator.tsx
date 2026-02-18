@@ -13,6 +13,7 @@ import {
   PrayScreen,
   SettingsScreen,
 } from '../screens';
+import { LightACandleScreen } from '../features/light-a-candle';
 // Note: Support/Donate can be added later as needed
 import { useUserLoader } from '../hooks';
 import { useUserStore } from '../stores';
@@ -31,6 +32,7 @@ export type TabParamList = {
 
 export type RootStackParamList = {
   Main: undefined;
+  LightACandle: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -121,10 +123,19 @@ function MainNavigator() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg.surface },
-        animation: 'slide_from_right',
+        animation: 'fade',
+        animationDuration: 400,
       }}
     >
       <RootStack.Screen name="Main" component={TabNavigator} />
+      <RootStack.Screen 
+        name="LightACandle" 
+        component={LightACandleScreen}
+        options={{
+          animation: 'fade',
+          animationDuration: 350,
+        }}
+      />
     </RootStack.Navigator>
   );
 }

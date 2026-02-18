@@ -24,7 +24,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/AppNavigator';
+
 import { useTodayStore, useUserStore, useSettingsStore } from '../stores';
+import { useCandleCount } from '../features/light-a-candle';
 import { useAudioPlayer, useAppStateRefresh } from '../hooks';
 import { api, ApiError, formatReference, checkNotificationPermissions } from '../lib';
 import { useTheme, spacing, radius, shadow, typography, touchTargets } from '../theme';
@@ -32,10 +37,14 @@ import { PrayerInput, NotificationPrompt, DatePickerSheet } from '../components'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+type TodayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export function TodayScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { getToken } = useAuth();
+  const navigation = useNavigation<TodayScreenNavigationProp>();
+  const { hasLitToday } = useCandleCount();
   const [showReading, setShowReading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -535,6 +544,28 @@ export function TodayScreen() {
             )}
           </View>
 
+          {/* Light a Candle Card */}
+          <Pressable
+            style={styles.candleCard}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate('LightACandle');
+            }}
+          >
+            <View style={styles.candleCardLeft}>
+              <View style={styles.candleIconContainer}>
+                <Text style={styles.candleIcon}>🕯️</Text>
+              </View>
+              <View style={styles.candleCardInfo}>
+                <Text style={styles.candleCardTitle}>Light a Candle</Text>
+                <Text style={styles.candleCardSubtitle}>
+                  {hasLitToday ? 'You lit a candle today' : 'Hold someone in your heart'}
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.text.muted} />
+          </Pressable>
+
           {/* Prayer Input */}
           <View style={styles.prayerSection}>
             <PrayerInput readingId={date} readingDate={date} />
@@ -687,6 +718,46 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) => StyleShe
     ...typography.caption,
     color: colors.accent.primary,
     fontWeight: '500',
+  },
+
+  // Candle Card
+  candleCard: {
+    backgroundColor: colors.bg.elevated,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  candleCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  candleIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.accent.ctaSoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  candleIcon: {
+    fontSize: 24,
+  },
+  candleCardInfo: {
+    marginLeft: spacing.md,
+    flex: 1,
+  },
+  candleCardTitle: {
+    ...typography.bodyStrong,
+    color: colors.text.primary,
+  },
+  candleCardSubtitle: {
+    ...typography.caption,
+    color: colors.text.muted,
+    marginTop: 2,
   },
 
   // Prayer Section
