@@ -16,7 +16,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 
 import { useTheme, spacing, radius, typography } from '../../theme';
 import {
@@ -93,7 +93,17 @@ export function LightACandleScreen() {
     
     // Navigate back after animation
     setTimeout(() => {
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        // Fallback: reset to Main tab
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          })
+        );
+      }
     }, CONFIRMATION_FADE_OUT);
   }, [navigation]);
 
