@@ -42,7 +42,7 @@ type TodayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export function TodayScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
-  const { getToken } = useAuth();
+  const { getToken, signOut } = useAuth();
   const navigation = useNavigation<TodayScreenNavigationProp>();
   const { hasLitToday } = useCandleCount();
   const [showReading, setShowReading] = useState(false);
@@ -84,6 +84,7 @@ export function TodayScreen() {
     hasCompletedFirstPrayer,
     sessionCount,
     incrementSessionCount,
+    clearUser,
   } = useUserStore();
   
   const { notificationPermissionGranted, dailyReminderEnabled } = useSettingsStore();
@@ -227,12 +228,20 @@ export function TodayScreen() {
       
       setScreenState('ready');
     } catch (error) {
-      console.error('Failed to load readings:', error);
+      console.error('[TodayScreen] Failed to load readings:', error);
       if (error instanceof ApiError) {
         if (error.status === 404) {
           setError('Readings not available for this date.');
         } else if (error.status === 401) {
+          console.error('[TodayScreen] 401 error - signing user out');
           setError('Session expired. Please sign in again.');
+          // Clear local state and sign out
+          clearUser();
+          try {
+            await signOut();
+          } catch (signOutErr) {
+            console.error('[TodayScreen] Error during sign out:', signOutErr);
+          }
         } else {
           setError('Something went wrong. Please try again.');
         }

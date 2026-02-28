@@ -29,6 +29,11 @@ const tokenCache = {
 // In production, this should be set via app.config.js or EAS secrets
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '';
 
+// Debug: Log key status on startup (redacted for security)
+if (__DEV__) {
+  console.log('[Clerk] Publishable key configured:', CLERK_PUBLISHABLE_KEY ? `${CLERK_PUBLISHABLE_KEY.substring(0, 15)}...` : 'MISSING');
+}
+
 function ThemedStatusBar() {
   const { isDark } = useTheme();
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
@@ -36,7 +41,7 @@ function ThemedStatusBar() {
 
 export default function App() {
   if (!CLERK_PUBLISHABLE_KEY) {
-    console.warn('Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY');
+    console.error('[Clerk] CRITICAL: Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY - auth will not work!');
   }
 
   return (
