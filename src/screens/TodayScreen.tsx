@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -56,6 +56,9 @@ export function TodayScreen() {
   // Determine if viewing a past date
   const todayStr = new Date().toISOString().split('T')[0];
   const viewingPastDate = selectedDate !== null && selectedDate !== todayStr;
+  
+  // Ref to prevent double-initialization (React Strict Mode, HMR, etc.)
+  const hasInitRef = useRef(false);
   
   // Stores
   const { 
@@ -191,16 +194,9 @@ export function TodayScreen() {
       }
 
       // Loading today - include session tracking
-      const [readings, session] = await Promise.all([
-        api.getTodayReadings(token),
-        api.startSession(token).catch((err: ApiError) => {
-          if (err.status === 409) {
-            return { session_id: null, already_completed: true };
-          }
-          throw err;
-        }),
-      ]);
-
+      // First fetch readings
+      const readings = await api.getTodayReadings(token);
+      
       setReadings({
         date: readings.date,
         first_reading: readings.first_reading,
@@ -213,9 +209,22 @@ export function TodayScreen() {
         feast: readings.feast,
       });
 
-      if (session.session_id) {
-        setSessionId(session.session_id);
+      // Only start session if not already started (prevents duplicate calls)
+      if (!useTodayStore.getState().sessionId) {
+        try {
+          const session = await api.startSession(token);
+          if (session.session_id) {
+            setSessionId(session.session_id);
+          }
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            // Session already exists, ignore
+          } else {
+            throw err;
+          }
+        }
       }
+      
       setScreenState('ready');
     } catch (error) {
       console.error('Failed to load readings:', error);
@@ -239,8 +248,10 @@ export function TodayScreen() {
   // Refresh when app comes to foreground on new day
   useAppStateRefresh(loadTodayData);
 
-  // Load data on mount
+  // Load data on mount (once only — guarded against React Strict Mode / HMR)
   useEffect(() => {
+    if (hasInitRef.current) return;
+    hasInitRef.current = true;
     loadTodayData();
   }, []);
 
