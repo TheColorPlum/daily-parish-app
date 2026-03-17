@@ -12,6 +12,8 @@ import {
   TodayScreen,
   PrayScreen,
   SettingsScreen,
+  NotificationTimeScreen,
+  OnboardingCompletionScreen,
 } from '../screens';
 import { LightACandleScreen } from '../features/light-a-candle';
 // Note: Support/Donate can be added later as needed
@@ -33,6 +35,8 @@ export type TabParamList = {
 export type RootStackParamList = {
   Main: undefined;
   LightACandle: undefined;
+  OnboardingNotificationTime: undefined;
+  OnboardingCompletion: { time?: string };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -136,6 +140,16 @@ function MainNavigator() {
           animationDuration: 350,
         }}
       />
+      <RootStack.Group screenOptions={{ presentation: 'modal' }}>
+        <RootStack.Screen
+          name="OnboardingNotificationTime"
+          component={NotificationTimeScreen}
+        />
+        <RootStack.Screen
+          name="OnboardingCompletion"
+          component={OnboardingCompletionScreen}
+        />
+      </RootStack.Group>
     </RootStack.Navigator>
   );
 }
