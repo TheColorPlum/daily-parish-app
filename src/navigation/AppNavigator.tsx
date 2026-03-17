@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -109,21 +109,33 @@ function TabNavigator() {
 
 function MainNavigator() {
   const { colors } = useTheme();
-  const { hasSeenWelcome } = useUserStore();
+  const { hasSeenWelcome, hasCompletedOnboarding } = useUserStore();
   const [showInterstitial, setShowInterstitial] = useState(!hasSeenWelcome);
+  // Track if we need onboarding after interstitial (captured at interstitial dismiss time)
+  const needsOnboardingRef = useRef(!hasCompletedOnboarding);
   
   // Load user profile on auth
   useUserLoader();
   
+  // When interstitial completes, we'll use the ref to determine initial route
+  const handleInterstitialComplete = () => {
+    needsOnboardingRef.current = !hasCompletedOnboarding;
+    setShowInterstitial(false);
+  };
+  
   // Show welcome interstitial for first-time users
   if (showInterstitial) {
     return (
-      <WelcomeInterstitial onComplete={() => setShowInterstitial(false)} />
+      <WelcomeInterstitial onComplete={handleInterstitialComplete} />
     );
   }
   
+  // Determine initial route: onboarding for new users, tabs for returning users
+  const initialRouteName = needsOnboardingRef.current ? 'OnboardingNotificationTime' : 'Main';
+  
   return (
     <RootStack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg.surface },
@@ -140,16 +152,23 @@ function MainNavigator() {
           animationDuration: 350,
         }}
       />
-      <RootStack.Group screenOptions={{ presentation: 'modal' }}>
-        <RootStack.Screen
-          name="OnboardingNotificationTime"
-          component={NotificationTimeScreen}
-        />
-        <RootStack.Screen
-          name="OnboardingCompletion"
-          component={OnboardingCompletionScreen}
-        />
-      </RootStack.Group>
+      {/* Onboarding screens - fullscreen with gesture disabled to prevent skipping */}
+      <RootStack.Screen
+        name="OnboardingNotificationTime"
+        component={NotificationTimeScreen}
+        options={{
+          gestureEnabled: false,
+          animation: 'fade',
+        }}
+      />
+      <RootStack.Screen
+        name="OnboardingCompletion"
+        component={OnboardingCompletionScreen}
+        options={{
+          gestureEnabled: false,
+          animation: 'fade',
+        }}
+      />
     </RootStack.Navigator>
   );
 }

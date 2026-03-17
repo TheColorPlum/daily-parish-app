@@ -3,7 +3,8 @@ import { View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button, ScreenShell, Body, DisplayLg, Caption, Scripture } from '../components';
-import { useTheme, spacing, radius } from '../theme';
+import { useTheme, spacing } from '../theme';
+import { useUserStore } from '../stores';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -13,12 +14,18 @@ export function OnboardingCompletionScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { colors } = useTheme();
+  const { setHasCompletedOnboarding } = useUserStore();
   
   const selectedTime = route.params?.time || 'tomorrow';
 
   const handleDone = () => {
-    // Navigate back to main tabs
-    navigation.popToTop();
+    // Mark onboarding as complete
+    setHasCompletedOnboarding(true);
+    // Reset to main tabs (clears onboarding from back stack)
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main' }],
+    });
   };
 
   const styles = createStyles(colors);

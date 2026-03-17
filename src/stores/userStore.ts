@@ -10,6 +10,7 @@ interface UserState {
   // First-run flags
   hasCompletedFirstSession: boolean;
   hasSeenWelcome: boolean;
+  hasCompletedOnboarding: boolean; // Completed notification time + completion screens
   hasCompletedFirstPrayer: boolean;
   hasSeenSaveMessage: boolean;
   sessionCount: number; // Track for notification prompt timing
@@ -18,6 +19,7 @@ interface UserState {
   setUser: (user: { id: string; email: string }) => void;
   setHasCompletedFirstSession: (value: boolean) => void;
   setHasSeenWelcome: (value: boolean) => void;
+  setHasCompletedOnboarding: (value: boolean) => void;
   setHasCompletedFirstPrayer: (value: boolean) => void;
   setHasSeenSaveMessage: (value: boolean) => void;
   incrementSessionCount: () => void;
@@ -32,6 +34,7 @@ export const useUserStore = create<UserState>()(
       email: null,
       hasCompletedFirstSession: false,
       hasSeenWelcome: false,
+      hasCompletedOnboarding: false,
       hasCompletedFirstPrayer: false,
       hasSeenSaveMessage: false,
       sessionCount: 0,
@@ -42,6 +45,8 @@ export const useUserStore = create<UserState>()(
       setHasCompletedFirstSession: (value) => set({ hasCompletedFirstSession: value }),
       
       setHasSeenWelcome: (value) => set({ hasSeenWelcome: value }),
+      
+      setHasCompletedOnboarding: (value) => set({ hasCompletedOnboarding: value }),
       
       setHasCompletedFirstPrayer: (value) => set({ hasCompletedFirstPrayer: value }),
       
