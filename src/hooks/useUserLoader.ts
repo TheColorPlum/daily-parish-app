@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useUserStore } from '../stores';
+import { useUserStore, useSubscriptionStore } from '../stores';
 import { api, ApiError } from '../lib';
 
 /**
@@ -11,6 +11,7 @@ export function useUserLoader() {
   const { isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const { setUser, clearUser } = useUserStore();
+  const { syncFromUser, reset: resetSubscription } = useSubscriptionStore();
 
   useEffect(() => {
     if (isSignedIn && user) {
@@ -34,12 +35,15 @@ export function useUserLoader() {
       console.log('[UserLoader] Token received, length:', token.length, 'prefix:', token.substring(0, 20) + '...');
 
       const userData = await api.getUser(token);
-      console.log('[UserLoader] User profile loaded:', userData.id);
+      console.log('[UserLoader] User profile loaded:', userData.id, 'subscription:', userData.subscription_status);
       
       setUser({
         id: userData.id,
         email: userData.email,
       });
+      
+      // Sync subscription status from backend
+      syncFromUser(userData.subscription_status);
     } catch (error) {
       console.error('[UserLoader] Failed to load user profile:', error);
       
@@ -47,6 +51,7 @@ export function useUserLoader() {
       if (error instanceof ApiError && error.status === 401) {
         console.error('[UserLoader] 401 from API - token invalid, signing out');
         clearUser();
+        resetSubscription();
         try {
           await signOut();
         } catch (signOutError) {
