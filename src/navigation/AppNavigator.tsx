@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -16,6 +16,8 @@ import {
   OnboardingCompletionScreen,
 } from '../screens';
 import { LightACandleScreen } from '../features/light-a-candle';
+import { LibraryScreen } from '../features/library';
+import { MiniPlayer } from '../components/MiniPlayer';
 // Note: Support/Donate can be added later as needed
 import { useUserLoader } from '../hooks';
 import { useUserStore } from '../stores';
@@ -28,6 +30,7 @@ export type AuthStackParamList = {
 
 export type TabParamList = {
   Today: undefined;
+  Library: undefined;
   Prayers: undefined;
   Settings: undefined;
 };
@@ -63,47 +66,55 @@ function TabNavigator() {
   const insets = useSafeAreaInsets();
   
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-          
-          if (route.name === 'Today') {
-            iconName = focused ? 'today' : 'today-outline';
-          } else if (route.name === 'Prayers') {
-            iconName = focused ? 'heart' : 'heart-outline';
-          } else {
-            iconName = focused ? 'settings' : 'settings-outline';
-          }
-          
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-        tabBarActiveTintColor: colors.accent.primary, // Green for identity
-        tabBarInactiveTintColor: colors.text.muted,
-        tabBarStyle: {
-          backgroundColor: colors.bg.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          paddingTop: 8,
-          height: 56 + insets.bottom,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
-        },
-      })}
-    >
-      <Tab.Screen name="Today" component={TodayScreen} />
-      <Tab.Screen name="Prayers" component={PrayScreen} />
-      <Tab.Screen 
-        name="Settings" 
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: () => null, // Icon only
-        }}
-      />
-    </Tab.Navigator>
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName: keyof typeof Ionicons.glyphMap;
+            
+            if (route.name === 'Today') {
+              iconName = focused ? 'today' : 'today-outline';
+            } else if (route.name === 'Library') {
+              iconName = focused ? 'book' : 'book-outline';
+            } else if (route.name === 'Prayers') {
+              iconName = focused ? 'heart' : 'heart-outline';
+            } else {
+              iconName = focused ? 'settings' : 'settings-outline';
+            }
+            
+            return <Ionicons name={iconName} size={size} color={color} />;
+          },
+          tabBarActiveTintColor: colors.accent.primary, // Green for identity
+          tabBarInactiveTintColor: colors.text.muted,
+          tabBarStyle: {
+            backgroundColor: colors.bg.surface,
+            borderTopColor: colors.border,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            paddingTop: 8,
+            height: 56 + insets.bottom,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontWeight: '500',
+          },
+        })}
+      >
+        <Tab.Screen name="Today" component={TodayScreen} />
+        <Tab.Screen name="Library" component={LibraryScreen} />
+        <Tab.Screen name="Prayers" component={PrayScreen} />
+        <Tab.Screen 
+          name="Settings" 
+          component={SettingsScreen}
+          options={{
+            tabBarLabel: () => null, // Icon only
+          }}
+        />
+      </Tab.Navigator>
+      
+      {/* Mini-player docked above tab bar */}
+      <MiniPlayer />
+    </>
   );
 }
 

@@ -7,6 +7,8 @@ export { MonthCalendar } from './MonthCalendar';
 export { PrayerInput } from './PrayerInput';
 export { NotificationPrompt } from './NotificationPrompt';
 export { DatePickerSheet } from './DatePickerSheet';
+export { MiniPlayer } from './MiniPlayer';
+export { InlineAudioPlayer } from './InlineAudioPlayer';
 export { 
   Text, 
   DisplayLg, 
