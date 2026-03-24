@@ -47,6 +47,9 @@ interface AudioState {
   // Mini-player visibility
   showMiniPlayer: boolean;
   
+  // Flag to trigger expand when navigating to Library
+  pendingExpand: boolean;
+  
   // Persisted progress (for resume functionality)
   savedProgress: Record<string, PlaybackProgress>;
   
@@ -67,6 +70,7 @@ interface AudioActions {
   showMini: () => void;
   hideMini: () => void;
   expandFromMini: () => void;
+  clearPendingExpand: () => void;
   
   // Progress persistence
   saveProgress: () => void;
@@ -101,6 +105,7 @@ export const useAudioStore = create<AudioStore>()(
       duration: 0,
       error: null,
       showMiniPlayer: false,
+      pendingExpand: false,
       savedProgress: {},
       _sound: null,
 
@@ -204,8 +209,12 @@ export const useAudioStore = create<AudioStore>()(
 
       expandFromMini: () => {
         // Called when user taps mini-player to return to full view
-        // Navigation handled by the component
-        set({ showMiniPlayer: false });
+        // Sets pendingExpand flag so LibraryScreen knows to open the sheet
+        set({ showMiniPlayer: false, pendingExpand: true });
+      },
+
+      clearPendingExpand: () => {
+        set({ pendingExpand: false });
       },
 
       saveProgress: () => {

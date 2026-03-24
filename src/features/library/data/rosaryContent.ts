@@ -5,6 +5,21 @@
 
 import { RosaryMystery } from '../../../stores/audioStore';
 
+// Audio files hosted on Vercel Blob
+// These URLs will be populated when audio files are uploaded
+const AUDIO_BASE_URL = 'https://votive-audio.public.blob.vercel-storage.com';
+
+/**
+ * Get audio URL for a rosary mystery
+ * Returns empty string if audio not yet available (graceful degradation)
+ */
+function getAudioUrl(mysteryId: RosaryMystery): string {
+  // Audio files follow pattern: rosary-{mystery}.mp3
+  // Return empty string for now - will be populated when audio uploaded
+  // TODO: Replace with actual URLs when audio files are uploaded to Vercel Blob
+  return `${AUDIO_BASE_URL}/rosary-${mysteryId}.mp3`;
+}
+
 export interface Decade {
   title: string;
   scripture: string;
@@ -31,7 +46,7 @@ export const ROSARY_MYSTERIES: RosaryMysteryData[] = [
     quoteAttribution: 'Our Lady of Fatima',
     duration: '~22 min',
     durationMs: 22 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
+    audioUrl: getAudioUrl('joyful'),
     decades: [
       {
         title: 'The Annunciation',
@@ -63,7 +78,7 @@ export const ROSARY_MYSTERIES: RosaryMysteryData[] = [
     quoteAttribution: 'Isaiah 53:3',
     duration: '~21 min',
     durationMs: 21 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
+    audioUrl: getAudioUrl('sorrowful'),
     decades: [
       {
         title: 'The Agony in the Garden',
@@ -95,7 +110,7 @@ export const ROSARY_MYSTERIES: RosaryMysteryData[] = [
     quoteAttribution: 'Matthew 28:6',
     duration: '~22 min',
     durationMs: 22 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
+    audioUrl: getAudioUrl('glorious'),
     decades: [
       {
         title: 'The Resurrection',
@@ -127,7 +142,7 @@ export const ROSARY_MYSTERIES: RosaryMysteryData[] = [
     quoteAttribution: 'John 8:12',
     duration: '~23 min',
     durationMs: 23 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
+    audioUrl: getAudioUrl('luminous'),
     decades: [
       {
         title: 'The Baptism of Christ',

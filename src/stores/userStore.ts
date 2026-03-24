@@ -1,6 +1,10 @@
+import React from 'react';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Hydration state for waiting on AsyncStorage
+let hasHydrated = false;
 
 interface UserState {
   // User data
@@ -64,6 +68,34 @@ export const useUserStore = create<UserState>()(
     {
       name: 'user-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state) => {
+        hasHydrated = true;
+      },
     }
   )
 );
+
+/**
+ * Check if the user store has been hydrated from AsyncStorage
+ * Use this to prevent flash of default state on app launch
+ */
+export function useUserStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = React.useState(hasHydrated);
+  
+  React.useEffect(() => {
+    // If already hydrated, we're done
+    if (hasHydrated) {
+      setHydrated(true);
+      return;
+    }
+    
+    // Otherwise, subscribe to changes
+    const unsub = useUserStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    
+    return () => unsub();
+  }, []);
+  
+  return hydrated;
+}

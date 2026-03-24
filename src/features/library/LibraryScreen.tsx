@@ -4,41 +4,92 @@
  * Main Library tab screen.
  * Shows Recent Reflections (archive) and Devotions (Rosary, Examen).
  * V4 design: 0px radius, Cinzel/Cormorant, 1px borders.
+ * 
+ * Premium gating: Free users see locked content, premium users can access.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
-  Dimensions,
-  FlatList,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { RosarySheet, ExamenSheet } from './components';
-import { ROSARY_MYSTERIES, RosaryMysteryData } from './data';
+import { ROSARY_MYSTERIES, RosaryMysteryData, getRosaryMystery } from './data';
 import { v4Colors, v4Typography, v4Spacing, v4Border, v4Radius } from '../../theme/v4tokens';
-import { RosaryMystery } from '../../stores/audioStore';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.75;
+import { useAudioStore, RosaryMystery } from '../../stores/audioStore';
+import { useSubscriptionStore } from '../../stores';
 
 export function LibraryScreen() {
   const [selectedMystery, setSelectedMystery] = useState<RosaryMysteryData | null>(null);
   const [showExamen, setShowExamen] = useState(false);
+  
+  // Subscription check for premium gating
+  const isPremium = useSubscriptionStore((state) => state.isPremium);
+  
+  // Audio store for pending expand handling
+  const { currentContent, pendingExpand, clearPendingExpand } = useAudioStore();
+
+  // Handle pending expand when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      if (pendingExpand && currentContent) {
+        // Clear the flag first
+        clearPendingExpand();
+        
+        // Open the appropriate sheet based on content type
+        if (currentContent.type === 'rosary' && currentContent.mystery) {
+          const mystery = getRosaryMystery(currentContent.mystery);
+          if (mystery) {
+            setSelectedMystery(mystery);
+          }
+        } else if (currentContent.type === 'examen') {
+          setShowExamen(true);
+        }
+      }
+    }, [pendingExpand, currentContent])
+  );
+
+  const showPaywall = () => {
+    Alert.alert(
+      'Premium Content',
+      'Upgrade to Votive+ to access guided Rosary and Evening Examen.',
+      [
+        { text: 'Maybe Later', style: 'cancel' },
+        { text: 'Learn More', onPress: () => {
+          // TODO: Navigate to subscription screen
+        }},
+      ]
+    );
+  };
 
   const handleRosaryPress = (mystery: RosaryMysteryData) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (!isPremium) {
+      showPaywall();
+      return;
+    }
+    
     setSelectedMystery(mystery);
   };
 
   const handleExamenPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (!isPremium) {
+      showPaywall();
+      return;
+    }
+    
     setShowExamen(true);
   };
 
@@ -79,12 +130,14 @@ export function LibraryScreen() {
             <View style={styles.devotionCardContent}>
               <View style={styles.devotionHeader}>
                 <Text style={styles.devotionTitle}>THE ROSARY</Text>
-                <View style={styles.lockBadge}>
-                  <Ionicons name="lock-closed" size={12} color={v4Colors.accent.flame} />
-                </View>
+                {!isPremium && (
+                  <View style={styles.lockBadge}>
+                    <Ionicons name="lock-closed" size={12} color={v4Colors.accent.flame} />
+                  </View>
+                )}
               </View>
               <Text style={styles.devotionSubtitle}>4 Mysteries • 20-25 min each</Text>
-              <Text style={styles.devotionLabel}>Premium</Text>
+              {!isPremium && <Text style={styles.devotionLabel}>Premium</Text>}
             </View>
           </Pressable>
 
@@ -93,10 +146,12 @@ export function LibraryScreen() {
             {ROSARY_MYSTERIES.map((mystery) => (
               <Pressable
                 key={mystery.id}
-                style={styles.mysteryChip}
+                style={[styles.mysteryChip, isPremium && styles.mysteryChipActive]}
                 onPress={() => handleRosaryPress(mystery)}
               >
-                <Text style={styles.mysteryChipText}>{mystery.title.replace(' Mysteries', '')}</Text>
+                <Text style={[styles.mysteryChipText, isPremium && styles.mysteryChipTextActive]}>
+                  {mystery.title.replace(' Mysteries', '')}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -106,12 +161,14 @@ export function LibraryScreen() {
             <View style={styles.devotionCardContent}>
               <View style={styles.devotionHeader}>
                 <Text style={styles.devotionTitle}>EVENING EXAMEN</Text>
-                <View style={styles.lockBadge}>
-                  <Ionicons name="lock-closed" size={12} color={v4Colors.accent.flame} />
-                </View>
+                {!isPremium && (
+                  <View style={styles.lockBadge}>
+                    <Ionicons name="lock-closed" size={12} color={v4Colors.accent.flame} />
+                  </View>
+                )}
               </View>
-              <Text style={styles.devotionSubtitle}>Daily reflection • 12 min</Text>
-              <Text style={styles.devotionLabel}>Premium</Text>
+              <Text style={styles.devotionSubtitle}>Daily reflection • 5-12 min</Text>
+              {!isPremium && <Text style={styles.devotionLabel}>Premium</Text>}
             </View>
           </Pressable>
         </View>
@@ -237,9 +294,15 @@ const styles = StyleSheet.create({
     marginRight: v4Spacing.xs,
     marginBottom: v4Spacing.xs,
   },
+  mysteryChipActive: {
+    borderColor: v4Colors.accent.forest,
+  },
   mysteryChipText: {
     ...v4Typography.label,
     color: v4Colors.ink.secondary,
     fontSize: 9,
+  },
+  mysteryChipTextActive: {
+    color: v4Colors.accent.forest,
   },
 });

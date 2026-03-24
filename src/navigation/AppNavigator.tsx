@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -20,7 +20,7 @@ import { LibraryScreen } from '../features/library';
 import { MiniPlayer } from '../components/MiniPlayer';
 // Note: Support/Donate can be added later as needed
 import { useUserLoader } from '../hooks';
-import { useUserStore } from '../stores';
+import { useUserStore, useUserStoreHydrated } from '../stores';
 import { useTheme } from '../theme';
 
 // Type definitions for navigation
@@ -120,19 +120,43 @@ function TabNavigator() {
 
 function MainNavigator() {
   const { colors } = useTheme();
+  const isHydrated = useUserStoreHydrated();
   const { hasSeenWelcome, hasCompletedOnboarding } = useUserStore();
-  const [showInterstitial, setShowInterstitial] = useState(!hasSeenWelcome);
-  // Track if we need onboarding after interstitial (captured at interstitial dismiss time)
-  const needsOnboardingRef = useRef(!hasCompletedOnboarding);
+  
+  // Only show interstitial AFTER hydration completes and user hasn't seen welcome
+  const [showInterstitial, setShowInterstitial] = useState(false);
+  const [initialRouteDecided, setInitialRouteDecided] = useState(false);
+  const needsOnboardingRef = useRef(false);
   
   // Load user profile on auth
   useUserLoader();
+  
+  // Once hydrated, decide what to show
+  useEffect(() => {
+    if (isHydrated && !initialRouteDecided) {
+      setInitialRouteDecided(true);
+      
+      // Only show interstitial if user hasn't seen welcome
+      if (!hasSeenWelcome) {
+        setShowInterstitial(true);
+      }
+      
+      // Track if we need onboarding
+      needsOnboardingRef.current = !hasCompletedOnboarding;
+    }
+  }, [isHydrated, hasSeenWelcome, hasCompletedOnboarding, initialRouteDecided]);
   
   // When interstitial completes, we'll use the ref to determine initial route
   const handleInterstitialComplete = () => {
     needsOnboardingRef.current = !hasCompletedOnboarding;
     setShowInterstitial(false);
   };
+  
+  // Wait for hydration before rendering anything
+  if (!isHydrated || !initialRouteDecided) {
+    // Could show a splash screen here, but null is fine for quick hydration
+    return null;
+  }
   
   // Show welcome interstitial for first-time users
   if (showInterstitial) {

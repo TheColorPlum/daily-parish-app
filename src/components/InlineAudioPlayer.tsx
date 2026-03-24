@@ -6,9 +6,10 @@
  * 
  * Resting state: ▶  Begin Rosary                              20 min
  * Playing state: ▐▐  4:32 / 20:00  ━━━━━━━━━●━━━━━━━━━━━━━━━━━━━
+ * Error state:   ⚠  Unable to load audio. Tap to retry.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -45,6 +46,7 @@ export function InlineAudioPlayer({ content, onPlaybackComplete }: InlineAudioPl
     isBuffering,
     position,
     duration,
+    error,
     loadContent,
     togglePlayback,
     seekTo,
@@ -53,13 +55,32 @@ export function InlineAudioPlayer({ content, onPlaybackComplete }: InlineAudioPl
   const isThisContent = currentContent?.id === content.id;
   const isActive = isThisContent && isLoaded;
   const isCurrentlyPlaying = isActive && isPlaying;
+  const hasError = isThisContent && error;
+  
+  // Track previous playing state for completion detection
+  const wasPlayingRef = useRef(false);
+
+  // Detect playback completion
+  useEffect(() => {
+    if (isActive && duration > 0) {
+      // Check if we just finished playing (was playing, now stopped, at end)
+      const isAtEnd = position >= duration - 500; // Within 500ms of end
+      
+      if (wasPlayingRef.current && !isPlaying && isAtEnd) {
+        // Playback completed
+        onPlaybackComplete?.();
+      }
+      
+      wasPlayingRef.current = isPlaying;
+    }
+  }, [isPlaying, position, duration, isActive, onPlaybackComplete]);
 
   // Progress animation
   const progressBarWidth = SCREEN_WIDTH - v4Spacing.md * 4;
   const progress = useSharedValue(0);
 
   // Sync progress with playback
-  React.useEffect(() => {
+  useEffect(() => {
     if (isActive && duration > 0) {
       progress.value = withTiming((position / duration) * 100, { duration: 100 });
     }
@@ -108,8 +129,8 @@ export function InlineAudioPlayer({ content, onPlaybackComplete }: InlineAudioPl
   async function handlePlayPause() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    if (!isThisContent) {
-      // Load this content and start playing
+    if (!isThisContent || hasError) {
+      // Load this content and start playing (or retry on error)
       await loadContent(content, true);
     } else {
       await togglePlayback();
@@ -120,8 +141,24 @@ export function InlineAudioPlayer({ content, onPlaybackComplete }: InlineAudioPl
     ? formatTime(content.duration)
     : '~20 min';
 
+  // Error state
+  if (hasError) {
+    return (
+      <Pressable style={styles.container} onPress={handlePlayPause}>
+        <View style={styles.errorRow}>
+          <Ionicons
+            name="alert-circle"
+            size={16}
+            color={v4Colors.accent.flame}
+          />
+          <Text style={styles.errorText}>Unable to load audio. Tap to retry.</Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   // Resting state - not playing this content
-  if (!isActive || !isCurrentlyPlaying && position === 0) {
+  if (!isActive || (!isCurrentlyPlaying && position === 0)) {
     return (
       <Pressable style={styles.container} onPress={handlePlayPause}>
         <View style={styles.restingRow}>
@@ -198,6 +235,16 @@ const styles = StyleSheet.create({
   durationText: {
     ...v4Typography.bodySmall,
     color: v4Colors.ink.muted,
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  errorText: {
+    ...v4Typography.bodySmall,
+    color: v4Colors.accent.flame,
+    marginLeft: v4Spacing.sm,
+    flex: 1,
   },
   playingRow: {
     flexDirection: 'row',

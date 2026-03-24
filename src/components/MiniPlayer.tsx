@@ -11,6 +11,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -23,6 +24,7 @@ interface MiniPlayerProps {
 
 export function MiniPlayer({ onExpand }: MiniPlayerProps) {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const {
     currentContent,
     isPlaying,
@@ -33,6 +35,7 @@ export function MiniPlayer({ onExpand }: MiniPlayerProps) {
     togglePlayback,
     stop,
     saveProgress,
+    expandFromMini,
   } = useAudioStore();
 
   if (!showMiniPlayer || !currentContent) {
@@ -52,6 +55,12 @@ export function MiniPlayer({ onExpand }: MiniPlayerProps) {
 
   const handleExpand = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Set pending expand flag and navigate to Library
+    expandFromMini();
+    navigation.navigate('Library');
+    
+    // Also call external handler if provided
     onExpand?.();
   };
 

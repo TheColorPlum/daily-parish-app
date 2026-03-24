@@ -1,9 +1,16 @@
 /**
  * Examen Content Data
- * Three versions: Standard (12 min), Short, Emotions
+ * Three distinct versions: Standard (12 min), Short (5 min), Emotions (10 min)
  */
 
 import { ExamenVersion } from '../../../stores/audioStore';
+
+// Audio files hosted on Vercel Blob
+const AUDIO_BASE_URL = 'https://votive-audio.public.blob.vercel-storage.com';
+
+function getAudioUrl(version: ExamenVersion): string {
+  return `${AUDIO_BASE_URL}/examen-${version}.mp3`;
+}
 
 export interface ExamenStep {
   title: string;
@@ -16,7 +23,7 @@ export interface ExamenVersionData {
   displayTitle: string;
   duration: string;
   durationMs: number;
-  audioUrl: string; // Will be populated from backend/CDN
+  audioUrl: string;
   description: string;
   steps: ExamenStep[];
 }
@@ -28,28 +35,28 @@ export const EXAMEN_VERSIONS: ExamenVersionData[] = [
     displayTitle: 'STANDARD',
     duration: '12 min',
     durationMs: 12 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
-    description: 'The Examen is a daily spiritual practice of reviewing your day with gratitude and seeking God\'s presence in ordinary moments.',
+    audioUrl: getAudioUrl('standard'),
+    description: 'The classic Ignatian Examen — a daily practice of reviewing your day with gratitude and seeking God\'s presence in ordinary moments.',
     steps: [
       {
-        title: 'Presence',
-        description: 'Become aware of God\'s presence with you now.',
+        title: 'Become Present',
+        description: 'Quiet yourself. Become aware that you are in God\'s presence. Ask the Holy Spirit to guide this time of prayer.',
       },
       {
-        title: 'Gratitude',
-        description: 'Give thanks for the day\'s gifts.',
+        title: 'Review with Gratitude',
+        description: 'Walk through your day from morning until now. What are you grateful for? Big or small, name the gifts.',
       },
       {
-        title: 'Review',
-        description: 'Walk through the day\'s events.',
+        title: 'Notice Your Emotions',
+        description: 'As you review the day, notice the feelings that arise. Where did you feel alive? Where did you feel drained?',
       },
       {
-        title: 'Response',
-        description: 'Notice your emotions, ask for forgiveness.',
+        title: 'Choose One Moment',
+        description: 'Select one moment that stands out — positive or negative. Pray about it. What is God saying to you through it?',
       },
       {
-        title: 'Resolve',
-        description: 'Look toward tomorrow.',
+        title: 'Look Toward Tomorrow',
+        description: 'Ask God for what you need for tomorrow. Conclude with the Our Father or a prayer of your choosing.',
       },
     ],
   },
@@ -59,28 +66,20 @@ export const EXAMEN_VERSIONS: ExamenVersionData[] = [
     displayTitle: 'SHORT',
     duration: '5 min',
     durationMs: 5 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
-    description: 'A brief version of the Examen for when time is limited but presence is still desired.',
+    audioUrl: getAudioUrl('short'),
+    description: 'A condensed version for busy days. Three simple questions to connect with God in any moment.',
     steps: [
       {
-        title: 'Presence',
-        description: 'Become aware of God\'s presence with you now.',
+        title: 'Pause',
+        description: 'Take a breath. God is here, right now, with you.',
       },
       {
-        title: 'Gratitude',
-        description: 'Give thanks for the day\'s gifts.',
+        title: 'One Gift',
+        description: 'What is one thing you\'re grateful for today? Thank God for it.',
       },
       {
-        title: 'Review',
-        description: 'Walk through the day\'s events.',
-      },
-      {
-        title: 'Response',
-        description: 'Notice your emotions, ask for forgiveness.',
-      },
-      {
-        title: 'Resolve',
-        description: 'Look toward tomorrow.',
+        title: 'One Need',
+        description: 'What do you need from God right now? Ask simply and trust.',
       },
     ],
   },
@@ -90,28 +89,28 @@ export const EXAMEN_VERSIONS: ExamenVersionData[] = [
     displayTitle: 'EMOTIONS',
     duration: '10 min',
     durationMs: 10 * 60 * 1000,
-    audioUrl: '', // TODO: Add CDN URL
-    description: 'A version focused on emotional awareness and processing feelings through a prayerful lens.',
+    audioUrl: getAudioUrl('emotions'),
+    description: 'An Examen focused on emotional awareness. Learn to recognize God\'s voice in your feelings and find healing through honest prayer.',
     steps: [
       {
-        title: 'Presence',
-        description: 'Become aware of God\'s presence with you now.',
+        title: 'Settle',
+        description: 'Close your eyes. Place your hand on your heart. Breathe slowly. Ask God to be present to your emotions.',
       },
       {
-        title: 'Gratitude',
-        description: 'Give thanks for the day\'s gifts.',
+        title: 'Name the Feeling',
+        description: 'What is the strongest emotion you\'ve felt today? Anger? Joy? Anxiety? Sadness? Name it without judgment.',
       },
       {
-        title: 'Review',
-        description: 'Walk through the day\'s events.',
+        title: 'Trace Its Source',
+        description: 'When did this feeling begin? What triggered it? Explore the memory gently with God beside you.',
       },
       {
-        title: 'Response',
-        description: 'Notice your emotions, ask for forgiveness.',
+        title: 'Speak to God',
+        description: 'Tell God exactly how you feel. No filter, no performance. Let the emotion become a prayer.',
       },
       {
-        title: 'Resolve',
-        description: 'Look toward tomorrow.',
+        title: 'Receive',
+        description: 'Sit in silence. What does God want to say to you about this feeling? Listen for peace, not answers.',
       },
     ],
   },

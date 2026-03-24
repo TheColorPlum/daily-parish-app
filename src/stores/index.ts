@@ -1,4 +1,4 @@
-export { useUserStore } from './userStore';
+export { useUserStore, useUserStoreHydrated } from './userStore';
 export { useTodayStore } from './todayStore';
 export { useSettingsStore } from './settingsStore';
 export { usePrayerStore, MILESTONES } from './prayerStore';
